@@ -94,7 +94,11 @@
       <div id="matching-found" style="display:none;">
         <div class="match-found-badge">✓ 매칭 완료</div>
         <p class="match-vs"><span id="match-my-name"></span> <span class="vs-text">VS</span> <span id="match-opponent-name"></span></p>
-        <p class="hint">잠시 후 난이도를 선택합니다...</p>
+        <div class="ready-section">
+          <select id="match-difficulty-select" class="difficulty-select"></select>
+          <button id="match-ready-btn" class="btn primary">준비 완료</button>
+          <p id="match-ready-status" class="hint"></p>
+        </div>
       </div>
       <div class="button-row">
         <button id="matching-cancel" class="btn">취소</button>

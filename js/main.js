@@ -30,6 +30,8 @@ const session = {
   matchOutcome: null,
   matchDetail: "",
   musicStoppedOnEnd: false,
+  myReady: false,
+  opponentReady: false,
 };
 
 let game = null;
@@ -223,21 +225,52 @@ function startMatching() {
     matchmaker.onRemoteState = (state) => { remoteState = state; };
     matchmaker.onDisconnect = () => { remoteState = { ...remoteState, gameOver: true }; };
     matchmaker.onCommand = (cmd, data) => {
-      if (cmd === "difficulty") {
-        startMatchedRun(data.index, false);
+      if (cmd === "ready") {
+        session.opponentReady = true;
+        el("match-ready-status").textContent = "상대방 준비 완료! " + (session.myReady ? "게임 시작 중..." : "당신도 준비하세요.");
+        checkBothReady();
       }
     };
     remoteState = {};
     session.multiplayer = true;
+    session.myReady = false;
+    session.opponentReady = false;
     el("matching-waiting").style.display = "none";
     el("matching-found").style.display = "block";
     el("match-my-name").textContent = session.studentName;
     el("match-opponent-name").textContent = opponentName || "상대방";
-    setTimeout(() => {
-      showMatchedDifficulty();
-    }, 2000);
+    el("match-ready-btn").disabled = false;
+    el("match-ready-btn").textContent = "준비 완료";
+    el("match-ready-status").textContent = "난이도를 선택하고 준비 완료를 누르세요.";
+    const sel = el("match-difficulty-select");
+    sel.innerHTML = "";
+    DIFFICULTIES.forEach(([, label, maxNum], i) => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = `${label} (0~${maxNum})`;
+      sel.appendChild(opt);
+    });
+    sel.value = session.difficultyIndex;
   }, session.studentName);
 }
+
+function checkBothReady() {
+  if (session.myReady && session.opponentReady) {
+    session.difficultyIndex = parseInt(el("match-difficulty-select").value, 10);
+    startMatchedRun(session.difficultyIndex, false);
+  }
+}
+
+el("match-ready-btn").addEventListener("click", () => {
+  clickSound();
+  session.myReady = true;
+  session.difficultyIndex = parseInt(el("match-difficulty-select").value, 10);
+  matchmaker.sendCommand("ready");
+  el("match-ready-btn").disabled = true;
+  el("match-ready-btn").textContent = "대기 중...";
+  el("match-ready-status").textContent = session.opponentReady ? "게임 시작 중..." : "상대방을 기다리는 중...";
+  checkBothReady();
+});
 
 // ---------- Screen: online matching ----------
 el("instructions-multiplayer").addEventListener("click", () => {
@@ -837,7 +870,7 @@ function frame() {
         session.musicStoppedOnEnd = true;
       }
       if (session.multiplayer && session.runNumber >= session.totalRuns) {
-        setTimeout(() => finishSession(), 1000);
+        setTimeout(() => finishSession(), 4000);
       }
     }
     const onlineActive = session.multiplayer && matchmaker.connected();

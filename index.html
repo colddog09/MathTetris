@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prime Stack - Math Tetris</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <section id="screen-student" class="screen card-screen active">
+    <div class="card">
+      <h1>PRIME STACK</h1>
+      <p class="subtitle">소수만을 쌓아라!</p>
+      <p class="hint">학번과 이름을 입력하세요</p>
+      <label>학번</label>
+      <input id="student-id" type="text" autocomplete="off">
+      <label>이름</label>
+      <input id="student-name" type="text" autocomplete="off">
+      <p id="student-error" class="error"></p>
+      <button id="student-next" class="btn primary">다음</button>
+    </div>
+  </section>
+
+  <section id="screen-coins" class="screen card-screen">
+    <div class="card">
+      <h1>COIN</h1>
+      <p class="subtitle">실행 가능 횟수를 입력하세요</p>
+      <p class="hint">코인 1개 = 플레이 1회</p>
+      <input id="coin-count" type="number" min="1" value="3">
+      <p id="coin-error" class="error"></p>
+      <button id="coin-next" class="btn primary">다음</button>
+      <button id="coin-back" class="btn">뒤로</button>
+    </div>
+  </section>
+
+  <section id="screen-difficulty" class="screen card-screen">
+    <div class="card wide">
+      <h1>DIFFICULTY</h1>
+      <p class="subtitle">블록에 등장하는 숫자 범위를 선택하세요</p>
+      <div id="difficulty-list"></div>
+      <button id="difficulty-back" class="btn">코인 수정</button>
+    </div>
+  </section>
+
+  <section id="screen-instructions" class="screen card-screen">
+    <div class="card wide">
+      <h1>HOW TO PLAY</h1>
+      <p id="instructions-subtitle" class="subtitle"></p>
+      <div class="rule-grid">
+        <div class="rule-card"><span class="rule-num">1</span><div><b>숫자 판별</b><p>소수는 득점, 합성수는 감점입니다.</p></div></div>
+        <div class="rule-card"><span class="rule-num">2</span><div><b>라인 삭제</b><p>줄을 지울 때 칸 점수를 한 번에 계산합니다.</p></div></div>
+        <div class="rule-card"><span class="rule-num">3</span><div><b>배율</b><p>여러 줄 삭제와 스핀은 최종 점수에 곱해집니다.</p></div></div>
+        <div class="rule-card"><span class="rule-num">4</span><div><b>폐기</b><p>X로 소수를 버리면 감점, 합성수를 버리면 득점합니다.</p></div></div>
+      </div>
+      <canvas id="instructions-demo-canvas" class="demo-canvas"></canvas>
+      <div class="key-grid">
+        <div><span>이동</span><kbd>←</kbd><kbd>→</kbd></div>
+        <div><span>시계 회전</span><kbd>↑</kbd></div>
+        <div><span>반시계 회전</span><kbd>Z</kbd></div>
+        <div><span>소프트 드롭</span><kbd>↓</kbd></div>
+        <div><span>하드 드롭</span><kbd class="wide-key">Space</kbd></div>
+        <div><span>홀드</span><kbd>C</kbd></div>
+        <div><span>폐기</span><kbd>X</kbd></div>
+        <div><span>설정</span><kbd>F1</kbd></div>
+      </div>
+      <div class="button-row">
+        <button id="instructions-start" class="btn primary">게임 시작</button>
+        <button id="instructions-multiplayer" class="btn">온라인 대전</button>
+        <button id="instructions-sensitivity" class="btn">감도 설정</button>
+        <button id="instructions-difficulty" class="btn">난이도 수정</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-matching" class="screen card-screen">
+    <div class="card">
+      <h1>ONLINE MATCH</h1>
+      <p class="subtitle" id="matching-status">대기열에서 상대를 찾는 중...</p>
+      <p class="hint">같은 순간에 다른 사람이 대기열에 들어오면 자동으로 매칭됩니다.</p>
+      <button id="matching-cancel" class="btn">취소</button>
+    </div>
+  </section>
+
+  <section id="screen-sensitivity" class="screen card-screen">
+    <div class="card wide">
+      <h1>SENSITIVITY</h1>
+      <p class="subtitle">아래 테스트 보드에서 직접 움직여보세요</p>
+      <div id="sensitivity-rows"></div>
+      <div class="sensitivity-body">
+        <canvas id="sensitivity-canvas" width="260" height="200"></canvas>
+        <div id="sensitivity-presets"></div>
+      </div>
+      <div class="button-row">
+        <button id="sensitivity-back" class="btn">설명으로</button>
+        <button id="sensitivity-reset" class="btn">테스트 리셋</button>
+        <button id="sensitivity-start" class="btn primary">게임 시작</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-playing" class="screen">
+    <div id="playing-layout">
+      <canvas id="game-canvas"></canvas>
+      <div id="opponent-panel">
+        <p id="opponent-name" class="opponent-name">상대</p>
+        <canvas id="opponent-canvas"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-finished" class="screen card-screen">
+    <div class="card wide">
+      <h1>SCOREBOARD</h1>
+      <p id="finished-subtitle" class="subtitle"></p>
+      <table id="scoreboard-table">
+        <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
+        <tbody id="scoreboard-body"></tbody>
+      </table>
+      <button id="finished-restart" class="btn primary">처음으로</button>
+    </div>
+  </section>
+
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -30,15 +30,15 @@ export const COLORS_BG = {
 };
 
 export const PRIME_SCORE = 10;
-export const COMPOSITE_SCORE = -15;
-export const DISCARD_PRIME_PENALTY = -10;
-export const DISCARD_COMPOSITE_BONUS = 20;
+export const COMPOSITE_SCORE = -20;
+export const DISCARD_PRIME_PENALTY = -30;
+export const DISCARD_COMPOSITE_BONUS = 30;
 export const SOFT_DROP_SLOWDOWN = 1.37;
 export const PRIME_CHANCE = 0.6;
 export const EVEN_COMPOSITE_WEIGHT = 0.18;
 export const FIVE_COMPOSITE_WEIGHT = 0.28;
 export const THREE_COMPOSITE_WEIGHT = 0.47;
-export const TIME_SPEEDUP_MS_PER_SECOND = 5.6;
+export const TIME_SPEEDUP_MS_PER_SECOND = 4.5;
 export const T_SPIN_SCORE_MULTIPLIER = 2;
 export const OTHER_SPIN_SCORE_MULTIPLIER = 2;
 export const IMMOBILE_SPIN_KINDS = new Set(["S", "Z", "L", "J", "I", "O"]);
@@ -61,12 +61,12 @@ export const KEY_ALIASES = {
   "ㄱ": "r",
   "ㅔ": "p",
 };
-export const REPEAT_KEYS = new Set(["left", "right", "down", "a", "d", "s"]);
+export const REPEAT_KEYS = new Set(["left", "right", "down", "d", "s"]);
 
-export const COLORS = { I: "#45d6ad", O: "#d6c65a", T: "#c94ab8", S: "#86c64a", Z: "#d94f55", J: "#d7834c", L: "#6957c9" };
-export const COLOR_EDGES = { I: "#15936f", O: "#9e9137", T: "#8d267d", S: "#5a9130", Z: "#983037", J: "#9b5429", L: "#42358f" };
-export const COLOR_LIGHTS = { I: "#6ff0c7", O: "#eee27d", T: "#e36bd1", S: "#a7df66", Z: "#ef7076", J: "#ee9a63", L: "#8372e2" };
-export const COLOR_SHADOWS = { I: "#107457", O: "#786d28", T: "#6f1d62", S: "#437022", Z: "#77262c", J: "#793f1d", L: "#33286f" };
+export const COLORS = { I: "#45d6ad", O: "#d6c65a", T: "#c94ab8", S: "#86c64a", Z: "#d94f55", J: "#6957c9", L: "#d7834c" };
+export const COLOR_EDGES = { I: "#15936f", O: "#9e9137", T: "#8d267d", S: "#5a9130", Z: "#983037", J: "#42358f", L: "#9b5429" };
+export const COLOR_LIGHTS = { I: "#6ff0c7", O: "#eee27d", T: "#e36bd1", S: "#a7df66", Z: "#ef7076", J: "#8372e2", L: "#ee9a63" };
+export const COLOR_SHADOWS = { I: "#107457", O: "#786d28", T: "#6f1d62", S: "#437022", Z: "#77262c", J: "#33286f", L: "#793f1d" };
 
 export const SHAPES = {
   I: { 0: [[-1, 0], [0, 0], [1, 0], [2, 0]], 1: [[1, -1], [1, 0], [1, 1], [1, 2]], 2: [[-1, 1], [0, 1], [1, 1], [2, 1]], 3: [[0, -1], [0, 0], [0, 1], [0, 2]] },
@@ -139,11 +139,11 @@ export const SENSITIVITY_PRESETS = [
 ];
 
 export const DIFFICULTIES = [
-  ["easy", "쉬움", 100, "기본 판별 연습"],
-  ["normal", "보통", 200, "두 자리와 세 자리 초반"],
-  ["hard", "어려움", 300, "세 자리 수 판별"],
-  ["expert", "전문가", 400, "큰 수가 자주 섞임"],
-  ["master", "마스터", 500, "최고 난이도"],
+  ["easy", "쉬움", 50, "소수 기초 연습"],
+  ["normal", "보통", 100, "두 자리 수 판별"],
+  ["hard", "어려움", 150, "세 자리 초반 수"],
+  ["expert", "전문가", 200, "두세 자리 혼합"],
+  ["master", "마스터", 300, "최고 난이도"],
 ];
 
 export const SEED_SCOREBOARD = [

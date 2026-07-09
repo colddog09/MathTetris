@@ -28,7 +28,7 @@ export function loadScoreboard() {
   } catch {
     extra = [];
   }
-  return [...SEED_SCOREBOARD, ...extra].sort((a, b) => b.best_score - a.best_score).slice(0, 20);
+  return [...SEED_SCOREBOARD, ...extra].sort((a, b) => b.best_score - a.best_score);
 }
 
 export function appendScoreboardEntry(entry) {

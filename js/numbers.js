@@ -50,3 +50,32 @@ export function randomTileNumber(maxNumber) {
   }
   return weightedCompositeChoice(composites);
 }
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export function createNumberBag(maxNumber) {
+  const { primes, composites } = numberPools(maxNumber);
+  return {
+    primes: shuffleArray(primes),
+    composites: shuffleArray(composites),
+    primesSource: primes,
+    compositesSource: composites,
+  };
+}
+
+export function drawFromNumberBag(bag) {
+  if (Math.random() < PRIME_CHANCE) {
+    if (bag.primes.length === 0) bag.primes = shuffleArray(bag.primesSource);
+    return bag.primes.pop();
+  } else {
+    if (bag.composites.length === 0) bag.composites = shuffleArray(bag.compositesSource);
+    return bag.composites.pop();
+  }
+}

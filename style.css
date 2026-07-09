@@ -374,6 +374,65 @@ tr.score-row.is-player {
   font-weight: bold;
 }
 
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+  margin: 24px auto 16px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.matching-label {
+  text-align: center;
+  font-size: 1.05rem;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.dots::after {
+  content: '...';
+  animation: blink 1.2s step-start infinite;
+}
+
+.match-found-badge {
+  display: inline-block;
+  background: #dcfce7;
+  color: #16a34a;
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 8px 20px;
+  border-radius: 999px;
+  margin: 20px auto 16px;
+}
+
+.match-vs {
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-align: center;
+  margin: 12px 0;
+  color: #1f2937;
+}
+
+.vs-text {
+  color: #2563eb;
+  margin: 0 12px;
+}
+
+#matching-found {
+  text-align: center;
+}
+
 @media (max-width: 640px) {
   .card.wide { width: 100%; }
   .rule-grid, .key-grid { grid-template-columns: 1fr; }

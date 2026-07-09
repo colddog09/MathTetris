@@ -4,17 +4,12 @@ import { renderGame, renderOpponentBoard } from "./render.js";
 import { SoundManager } from "./sound.js";
 import { loadSettings, saveSettings, loadScoreboard, appendScoreboardEntry } from "./storage.js";
 import { Matchmaker, isSupabaseConfigured } from "./multiplayer.js";
-import { payoutScore, scoreToCoin } from "./sadacoin.js";
 
 const sound = new SoundManager();
 const pressedKeys = new Set();
 const matchmaker = new Matchmaker();
 let remoteState = null;
 let lastMultiplayerSend = 0;
-let aiGame = null;
-let aiPlan = null;
-let aiPieceRef = null;
-let aiNextActionAt = 0;
 
 const session = {
   screen: "student",
@@ -24,16 +19,17 @@ const session = {
   runNumber: 0,
   difficultyIndex: 1,
   bestSessionScore: null,
+  currentScoreboardId: null,
   recordSaved: false,
   settings: loadSettings(),
   settingsOpen: false,
   settingsIndex: 0,
   mode: "single",
   multiplayer: false,
-  aiOpponent: false,
   youWin: false,
+  matchOutcome: null,
+  matchDetail: "",
   musicStoppedOnEnd: false,
-  coinPayoutRequested: false,
 };
 
 let game = null;
@@ -93,27 +89,27 @@ function submitStudent() {
 el("mode-single").addEventListener("click", () => {
   clickSound();
   matchmaker.leaveRoom();
-  stopAiOpponent();
   session.mode = "single";
   session.multiplayer = false;
-  session.aiOpponent = false;
   session.youWin = false;
+  session.matchOutcome = null;
+  session.matchDetail = "";
+  session.totalRuns = 1;
+  session.runNumber = 0;
+  session.bestSessionScore = null;
+  session.currentScoreboardId = null;
+  session.recordSaved = false;
   remoteState = null;
-  session.screen = "coins";
-  showScreen("screen-coins");
+  renderDifficultyScreen();
+  session.screen = "difficulty";
+  showScreen("screen-difficulty");
 });
 
 el("mode-multiplayer").addEventListener("click", () => {
   clickSound();
   matchmaker.leaveRoom();
-  stopAiOpponent();
-  session.mode = "multi";
-  session.multiplayer = false;
-  session.aiOpponent = false;
-  session.youWin = false;
-  remoteState = null;
-  session.screen = "coins";
-  showScreen("screen-coins");
+  prepareMultiplayerSession();
+  startMatching();
 });
 
 el("mode-back").addEventListener("click", () => {
@@ -122,37 +118,12 @@ el("mode-back").addEventListener("click", () => {
   showScreen("screen-student");
 });
 
-// ---------- Screen: coins ----------
-el("coin-next").addEventListener("click", submitCoins);
-el("coin-back").addEventListener("click", () => { clickSound(); session.screen = "mode"; showScreen("screen-mode"); });
-el("coin-count").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.isComposing) {
-    e.preventDefault();
-    e.stopPropagation();
-    submitCoins();
-  }
-});
-
-function submitCoins() {
-  clickSound();
-  const totalRuns = parseInt(el("coin-count").value, 10);
-  if (!totalRuns || totalRuns < 1) {
-    el("coin-error").textContent = "1 이상의 숫자를 입력하세요.";
-    return;
-  }
-  el("coin-error").textContent = "";
-  session.totalRuns = totalRuns;
-  session.runNumber = 0;
-  session.bestSessionScore = null;
-  session.recordSaved = false;
-  renderDifficultyScreen();
-  session.screen = "difficulty";
-  showScreen("screen-difficulty");
-}
-
 // ---------- Screen: difficulty ----------
 function renderDifficultyScreen() {
-  el("difficulty-list-status").textContent = session.mode === "multi" ? "멀티 모드: 난이도 선택 후 매칭 화면으로 이동합니다" : "";
+  el("difficulty-list-status").textContent = session.mode === "multi"
+    ? "매칭 완료! 난이도를 선택하면 1판 대전이 바로 시작됩니다."
+    : "";
+  el("difficulty-back").textContent = session.mode === "multi" ? "매칭으로" : "모드 선택";
   const list = el("difficulty-list");
   list.innerHTML = "";
   DIFFICULTIES.forEach((diff, index) => {
@@ -164,7 +135,16 @@ function renderDifficultyScreen() {
     list.appendChild(row);
   });
 }
-el("difficulty-back").addEventListener("click", () => { clickSound(); session.screen = "coins"; showScreen("screen-coins"); });
+el("difficulty-back").addEventListener("click", () => {
+  clickSound();
+  if (session.mode === "multi") {
+    session.screen = "matching";
+    showScreen("screen-matching");
+    return;
+  }
+  session.screen = "mode";
+  showScreen("screen-mode");
+});
 
 function showInstructions() {
   session.screen = "instructions";
@@ -178,10 +158,9 @@ function selectDifficulty(index) {
   const [, label, maxNumber] = DIFFICULTIES[index];
   el("instructions-subtitle").textContent = `${session.studentName} / ${session.totalRuns}회 플레이 / ${label} 0~${maxNumber}`;
   if (session.multiplayer && matchmaker.connected()) {
-    matchmaker.sendCommand("difficulty", { index });
-    startNextRun();
+    startMatchedRun(index, true);
   } else if (session.mode === "multi") {
-    startMatching(true);
+    startMatching();
   } else {
     showInstructions();
   }
@@ -192,68 +171,91 @@ el("instructions-start").addEventListener("click", () => { clickSound(); startNe
 el("instructions-sensitivity").addEventListener("click", () => { clickSound(); session.screen = "sensitivity"; renderSensitivityScreen(); showScreen("screen-sensitivity"); });
 el("instructions-difficulty").addEventListener("click", () => { clickSound(); session.screen = "difficulty"; showScreen("screen-difficulty"); });
 
-function startMatching(autoStartOnMatch = false) {
-  stopAiOpponent();
-  session.aiOpponent = false;
+function prepareMultiplayerSession() {
+  session.mode = "multi";
+  session.totalRuns = 1;
+  session.runNumber = 0;
+  session.bestSessionScore = null;
+  session.currentScoreboardId = null;
+  session.recordSaved = false;
   session.multiplayer = false;
+  session.youWin = false;
+  session.matchOutcome = null;
+  session.matchDetail = "";
+  session.musicStoppedOnEnd = false;
+  remoteState = null;
+}
+
+function showMatchedDifficulty() {
+  renderDifficultyScreen();
+  session.screen = "difficulty";
+  showScreen("screen-difficulty");
+}
+
+function startMatchedRun(index, shouldBroadcast = false) {
+  if (session.screen === "playing" || session.runNumber > 0) return;
+  session.difficultyIndex = index;
+  if (shouldBroadcast && matchmaker.connected()) matchmaker.sendCommand("difficulty", { index });
+  startNextRun();
+}
+
+function startMatching() {
+  session.multiplayer = false;
+  session.matchOutcome = null;
+  session.matchDetail = "";
   remoteState = null;
   if (!isSupabaseConfigured()) {
-    el("matching-status").textContent = "Supabase 설정이 안 되어 있습니다 (js/supabase-config.js 확인).";
+    el("matching-waiting").style.display = "none";
+    el("matching-found").style.display = "block";
+    el("match-my-name").textContent = "오류";
+    el("match-opponent-name").textContent = "";
+    el("matching-found").querySelector(".match-found-badge").textContent = "온라인 설정 없음";
+    el("matching-found").querySelector(".hint").textContent = "Supabase 설정을 확인하세요.";
     session.screen = "matching";
     showScreen("screen-matching");
     return;
   }
-  el("matching-status").textContent = "대기열에서 상대를 찾는 중...";
+  el("matching-waiting").style.display = "block";
+  el("matching-found").style.display = "none";
   session.screen = "matching";
   showScreen("screen-matching");
-  matchmaker.joinQueue(() => {
+  matchmaker.joinQueue((opponentName) => {
     matchmaker.onRemoteState = (state) => { remoteState = state; };
     matchmaker.onDisconnect = () => { remoteState = { ...remoteState, gameOver: true }; };
     matchmaker.onCommand = (cmd, data) => {
       if (cmd === "difficulty") {
-        session.difficultyIndex = data.index;
-        startNextRun();
+        startMatchedRun(data.index, false);
       }
     };
     remoteState = {};
     session.multiplayer = true;
-    session.aiOpponent = false;
-    if (autoStartOnMatch) {
-      startNextRun();
-    } else {
-      session.screen = "difficulty";
-      el("difficulty-list-status").textContent = "상대와 같은 난이도를 선택하세요";
-      showScreen("screen-difficulty");
-    }
-  });
+    el("matching-waiting").style.display = "none";
+    el("matching-found").style.display = "block";
+    el("match-my-name").textContent = session.studentName;
+    el("match-opponent-name").textContent = opponentName || "상대방";
+    setTimeout(() => {
+      showMatchedDifficulty();
+    }, 2000);
+  }, session.studentName);
 }
 
 // ---------- Screen: online matching ----------
 el("instructions-multiplayer").addEventListener("click", () => {
   clickSound();
-  session.mode = "multi";
-  startMatching(false);
+  matchmaker.leaveRoom();
+  prepareMultiplayerSession();
+  startMatching();
 });
 el("matching-cancel").addEventListener("click", () => {
   clickSound();
   matchmaker.cancelQueue();
-  stopAiOpponent();
+  matchmaker.leaveRoom();
   session.multiplayer = false;
-  session.aiOpponent = false;
-  showInstructions();
-});
-
-el("matching-ai").addEventListener("click", () => {
-  clickSound();
-  matchmaker.cancelQueue();
-  if (session.totalRuns < 1) session.totalRuns = 1;
-  session.multiplayer = true;
-  session.aiOpponent = true;
-  session.youWin = false;
-  session.musicStoppedOnEnd = false;
   remoteState = null;
-  el("matching-status").textContent = "AI와 대전을 시작합니다...";
-  startNextRun();
+  el("matching-waiting").style.display = "block";
+  el("matching-found").style.display = "none";
+  session.screen = "mode";
+  showScreen("screen-mode");
 });
 
 // ---------- Instructions demo animation ----------
@@ -555,7 +557,7 @@ function serializeBoardForOpponent(boardGame) {
   return boardGame.board.map((row) => row.map((cell) => (cell ? { kind: cell.kind, number: cell.number, prime: cell.prime } : null)));
 }
 
-function serializeOpponentGame(boardGame, name = "AI") {
+function serializeOpponentGame(boardGame, name = "Opponent") {
   if (!boardGame) return null;
   const now = performance.now() / 1000;
   return {
@@ -564,6 +566,7 @@ function serializeOpponentGame(boardGame, name = "AI") {
     lines: boardGame.lines,
     time: boardGame.remainingTime(now),
     gameOver: boardGame.gameOver,
+    gameOverReason: boardGame.gameOverReason,
     board: serializeBoardForOpponent(boardGame),
     piece: boardGame.gameOver || !boardGame.current
       ? null
@@ -576,66 +579,6 @@ function serializeOpponentGame(boardGame, name = "AI") {
   };
 }
 
-function stopAiOpponent() {
-  aiGame = null;
-  aiPlan = null;
-  aiPieceRef = null;
-  aiNextActionAt = 0;
-}
-
-function resetAiOpponent() {
-  const maxNumber = DIFFICULTIES[session.difficultyIndex][2];
-  aiGame = new TetrisGame(session.settings, maxNumber);
-  aiGame.pressed = new Set();
-  aiGame.sound = null;
-  aiPlan = null;
-  aiPieceRef = null;
-  aiNextActionAt = performance.now() / 1000 + 0.2;
-  remoteState = serializeOpponentGame(aiGame);
-}
-
-function makeAiPlan(now) {
-  const piece = aiGame.current;
-  const targetX = 1 + Math.floor(Math.random() * 8);
-  const targetRotation = piece.kind === "O" ? 0 : Math.floor(Math.random() * 4);
-  return {
-    targetX,
-    targetRotation,
-    dropAt: now + 0.7 + Math.random() * 0.8,
-  };
-}
-
-function updateAiOpponent(now) {
-  if (!session.aiOpponent || !aiGame) return;
-  if (aiGame.gameOver) {
-    remoteState = serializeOpponentGame(aiGame);
-    return;
-  }
-
-  if (aiPieceRef !== aiGame.current) {
-    aiPieceRef = aiGame.current;
-    aiPlan = makeAiPlan(now);
-  }
-
-  if (!aiGame.clearingAnimation && now >= aiNextActionAt) {
-    if (aiPlan && aiGame.current.rotation !== aiPlan.targetRotation) {
-      aiGame.rotate(1);
-    } else if (aiPlan && aiGame.current.x < aiPlan.targetX) {
-      aiGame.move(1, 0);
-    } else if (aiPlan && aiGame.current.x > aiPlan.targetX) {
-      aiGame.move(-1, 0);
-    } else if (aiPlan && now >= aiPlan.dropAt) {
-      aiGame.hardDrop();
-    } else {
-      aiGame.softDrop();
-    }
-    aiNextActionAt = now + 0.06 + Math.random() * 0.05;
-  }
-
-  aiGame.tick(now, false);
-  remoteState = serializeOpponentGame(aiGame);
-}
-
 function startNextRun() {
   if (session.runNumber >= session.totalRuns) {
     finishSession();
@@ -643,13 +586,15 @@ function startNextRun() {
   }
   session.runNumber += 1;
   session.youWin = false;
+  session.matchOutcome = null;
+  session.matchDetail = "";
   session.musicStoppedOnEnd = false;
+  session.recordSaved = false;
   const maxNumber = DIFFICULTIES[session.difficultyIndex][2];
   game = new TetrisGame(session.settings, maxNumber);
   game.sound = sound;
   session.settingsOpen = false;
   session.settingsIndex = 0;
-  if (session.aiOpponent) resetAiOpponent();
   pressedKeys.clear();
   game.pressed = pressedKeys;
   session.screen = "playing";
@@ -668,12 +613,17 @@ function recordRunScore() {
 function finishSession() {
   sound.stopMusic();
   session.screen = "finished";
+  if (game && !game.runRecorded) recordRunScore();
+  if (session.bestSessionScore === null && game) session.bestSessionScore = game.score;
   if (!session.recordSaved) {
     const [, label, maxNumber] = DIFFICULTIES[session.difficultyIndex];
     const now = new Date();
     const pad = (n) => String(n).padStart(2, "0");
     const playedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const scoreboardId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    session.currentScoreboardId = scoreboardId;
     appendScoreboardEntry({
+      scoreboard_id: scoreboardId,
       student_id: session.studentId,
       name: session.studentName,
       best_score: session.bestSessionScore ?? 0,
@@ -688,32 +638,22 @@ function finishSession() {
   showScreen("screen-finished");
 }
 
-function requestCoinPayout() {
-  if (session.coinPayoutRequested) return;
-  session.coinPayoutRequested = true;
-  const score = session.bestSessionScore ?? 0;
-  const coinPreview = scoreToCoin(score);
-  const statusEl = el("coin-status");
-  if (coinPreview <= 0) {
-    statusEl.textContent = "";
-    return;
-  }
-  statusEl.textContent = `${coinPreview}코인 지급 중...`;
-  payoutScore(session.studentId, session.studentName, score)
-    .then(() => { statusEl.textContent = `${coinPreview}코인 지급 완료`; })
-    .catch(() => { statusEl.textContent = "코인 지급 실패 (담당 선생님께 문의)"; });
-}
-
 function showFinishedScreen() {
   el("finished-subtitle").textContent = `${session.studentName} 최고 점수: ${session.bestSessionScore ?? 0}`;
   const scoreboard = loadScoreboard();
   const body = el("scoreboard-body");
   body.innerHTML = "";
-  scoreboard.slice(0, 10).forEach((row, index) => {
-    const isPlayer = row.student_id === session.studentId && row.name === session.studentName;
+  const currentIndex = scoreboard.findIndex((row) => row.scoreboard_id && row.scoreboard_id === session.currentScoreboardId);
+  let visibleRows = scoreboard.slice(0, 10).map((row, index) => ({ row, rank: index + 1 }));
+  if (currentIndex >= 10) {
+    visibleRows = scoreboard.slice(0, 9).map((row, index) => ({ row, rank: index + 1 }));
+    visibleRows.push({ row: scoreboard[currentIndex], rank: currentIndex + 1 });
+  }
+  visibleRows.forEach(({ row, rank }, index) => {
+    const isPlayer = row.scoreboard_id && row.scoreboard_id === session.currentScoreboardId;
     const tr = document.createElement("tr");
     tr.className = "score-row" + (isPlayer ? " is-player" : "");
-    tr.innerHTML = `<td>${index + 1}</td><td>${row.student_id}</td><td>${row.name}</td><td>${row.best_score}</td><td>${row.difficulty}</td>`;
+    tr.innerHTML = `<td>${rank}</td><td>${row.student_id}</td><td>${row.name}</td><td>${row.best_score}</td><td>${row.difficulty}</td>`;
     body.appendChild(tr);
     setTimeout(() => tr.classList.add("shown"), 60 + index * 90);
   });
@@ -725,11 +665,11 @@ el("finished-restart").addEventListener("click", () => {
   sound.stopMusic();
   session.mode = "single";
   session.multiplayer = false;
-  session.aiOpponent = false;
-  session.coinPayoutRequested = false;
   session.youWin = false;
+  session.matchOutcome = null;
+  session.matchDetail = "";
+  session.currentScoreboardId = null;
   session.musicStoppedOnEnd = false;
-  stopAiOpponent();
   remoteState = null;
   el("student-id").value = "";
   el("student-name").value = "";
@@ -746,8 +686,45 @@ function normalizeKey(event) {
   return SPECIAL_KEY_MAP[lower] ?? lower;
 }
 
-const REPEAT_KEYS = new Set(["left", "right", "down", "a", "d", "s"]);
+const REPEAT_KEYS = new Set(["left", "right", "down", "d", "s"]);
 const GAME_KEYS = new Set(["left", "right", "down", "up", "a", "d", "s", "w", "z", "x", "c", "space", "f1"]);
+
+function setMatchResult(outcome, detail, now) {
+  if (session.matchOutcome) return;
+  session.matchOutcome = outcome;
+  session.matchDetail = detail;
+  session.youWin = outcome === "win";
+  if (!game.gameOver) game.triggerGameOver(now, "match");
+}
+
+function resolveMultiplayerResult(now) {
+  if (!session.multiplayer || !remoteState || !game || session.matchOutcome) return;
+  const remoteOver = Boolean(remoteState.gameOver);
+  const remoteReason = remoteState.gameOverReason || "topout";
+  const localOver = Boolean(game.gameOver);
+  const localReason = game.gameOverReason || "topout";
+
+  if (remoteOver && remoteReason !== "time" && !localOver) {
+    setMatchResult("win", "상대방이 먼저 게임오버!", now);
+    return;
+  }
+
+  if (localOver && localReason === "time") {
+    const remoteScore = Number.isFinite(remoteState.score) ? remoteState.score : 0;
+    if (game.score > remoteScore) {
+      setMatchResult("win", `시간 종료! ${game.score} : ${remoteScore}`, now);
+    } else if (game.score < remoteScore) {
+      setMatchResult("lose", `시간 종료! ${game.score} : ${remoteScore}`, now);
+    } else {
+      setMatchResult("draw", `시간 종료! ${game.score} : ${remoteScore}`, now);
+    }
+    return;
+  }
+
+  if (localOver && localReason !== "time") {
+    setMatchResult("lose", "블록이 천장에 닿았습니다.", now);
+  }
+}
 
 function handleSettingsKey(key) {
   if (key === "f1" || key === "escape") {
@@ -774,7 +751,14 @@ window.addEventListener("keydown", (event) => {
   }
   if (session.screen === "difficulty") {
     if (["1", "2", "3", "4", "5"].includes(key)) selectDifficulty(parseInt(key, 10) - 1);
-    else if (key === "escape") { session.screen = "coins"; showScreen("screen-coins"); }
+    else if (key === "escape") {
+      session.screen = session.mode === "multi" ? "matching" : "mode";
+      showScreen(session.mode === "multi" ? "screen-matching" : "screen-mode");
+    }
+    return;
+  }
+  if (session.screen === "matching") {
+    if (key === "escape") el("matching-cancel").click();
     return;
   }
   if (session.screen === "instructions") {
@@ -812,6 +796,7 @@ window.addEventListener("keydown", (event) => {
   if (REPEAT_KEYS.has(key)) pressedKeys.add(key);
 
   if (key === "up" || key === "w") game.rotate(1);
+  else if (key === "a") game.rotate(2);
   else if (key === "x") game.discardPiece();
   else if (key === "z") game.rotate(-1);
   else if (key === "space") game.hardDrop();
@@ -843,21 +828,20 @@ canvas.addEventListener("click", (event) => {
 function frame() {
   const now = performance.now() / 1000;
   if (session.screen === "playing" && game) {
-    updateAiOpponent(now);
-    if (session.multiplayer && remoteState?.gameOver && !game.gameOver && !session.youWin) {
-      session.youWin = true;
-      game.triggerGameOver(now);
-    }
     game.tick(now, session.settingsOpen);
+    resolveMultiplayerResult(now);
     if (game.gameOver) {
       recordRunScore();
       if (!session.musicStoppedOnEnd) {
         sound.stopMusic();
         session.musicStoppedOnEnd = true;
       }
+      if (session.multiplayer && session.runNumber >= session.totalRuns) {
+        setTimeout(() => finishSession(), 1000);
+      }
     }
-    const onlineActive = session.multiplayer && !session.aiOpponent && matchmaker.connected();
-    const opponentActive = session.aiOpponent || onlineActive;
+    const onlineActive = session.multiplayer && matchmaker.connected();
+    const opponentActive = onlineActive;
     if (onlineActive && now - lastMultiplayerSend > 0.25) {
       lastMultiplayerSend = now;
       matchmaker.sendState({
@@ -866,6 +850,7 @@ function frame() {
         lines: game.lines,
         time: game.remainingTime(now),
         gameOver: game.gameOver,
+        gameOverReason: game.gameOverReason,
         board: serializeBoardForOpponent(game),
         piece: game.gameOver ? null : { kind: game.current.kind, number: game.current.number, prime: game.isPrimePiece(game.current), cells: game.currentCells() },
       });
@@ -888,6 +873,8 @@ function frame() {
       multiplayerConnected: opponentActive,
       remoteState,
       youWin: session.youWin,
+      matchOutcome: session.matchOutcome,
+      matchDetail: session.matchDetail,
     });
     gameOverRects = result.gameOverRects;
   } else if (session.screen === "sensitivity") {

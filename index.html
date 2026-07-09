@@ -34,22 +34,10 @@
         </button>
         <button id="mode-multiplayer" class="mode-card">
           <b>멀티 플레이</b>
-          <span>온라인 상대 또는 AI와 대결합니다.</span>
+          <span>바로 상대를 찾고, 매칭 뒤 난이도를 정해 1판 대전합니다.</span>
         </button>
       </div>
       <button id="mode-back" class="btn">뒤로</button>
-    </div>
-  </section>
-
-  <section id="screen-coins" class="screen card-screen">
-    <div class="card">
-      <h1>COIN</h1>
-      <p class="subtitle">실행 가능 횟수를 입력하세요</p>
-      <p class="hint">코인 1개 = 플레이 1회</p>
-      <input id="coin-count" type="number" min="1" value="3">
-      <p id="coin-error" class="error"></p>
-      <button id="coin-next" class="btn primary">다음</button>
-      <button id="coin-back" class="btn">뒤로</button>
     </div>
   </section>
 
@@ -59,7 +47,7 @@
       <p class="subtitle">블록에 등장하는 숫자 범위를 선택하세요</p>
       <p id="difficulty-list-status" class="hint"></p>
       <div id="difficulty-list"></div>
-      <button id="difficulty-back" class="btn">코인 수정</button>
+      <button id="difficulty-back" class="btn">모드 선택</button>
     </div>
   </section>
 
@@ -71,24 +59,27 @@
         <div class="rule-card"><span class="rule-num">1</span><div><b>숫자 판별</b><p>소수는 득점, 합성수는 감점입니다.</p></div></div>
         <div class="rule-card"><span class="rule-num">2</span><div><b>라인 삭제</b><p>줄을 지울 때 칸 점수를 한 번에 계산합니다.</p></div></div>
         <div class="rule-card"><span class="rule-num">3</span><div><b>배율</b><p>여러 줄 삭제와 스핀은 최종 점수에 곱해집니다.</p></div></div>
-        <div class="rule-card"><span class="rule-num">4</span><div><b>폐기</b><p>X로 소수를 버리면 감점, 합성수를 버리면 득점합니다.</p></div></div>
+        <div class="rule-card"><span class="rule-num">4</span><div><b>폐기</b><p>X로 소수는 -10점, 합성수는 +10점입니다.</p></div></div>
       </div>
       <canvas id="instructions-demo-canvas" class="demo-canvas"></canvas>
       <div class="key-grid">
         <div><span>이동</span><kbd>←</kbd><kbd>→</kbd></div>
         <div><span>시계 회전</span><kbd>↑</kbd></div>
         <div><span>반시계 회전</span><kbd>Z</kbd></div>
+        <div><span>180도 회전</span><kbd>A</kbd></div>
         <div><span>소프트 드롭</span><kbd>↓</kbd></div>
         <div><span>하드 드롭</span><kbd class="wide-key">Space</kbd></div>
         <div><span>홀드</span><kbd>C</kbd></div>
         <div><span>폐기</span><kbd>X</kbd></div>
         <div><span>설정</span><kbd>F1</kbd></div>
       </div>
-      <div class="button-row">
-        <button id="instructions-start" class="btn primary">게임 시작</button>
-        <button id="instructions-multiplayer" class="btn">온라인 대전</button>
-        <button id="instructions-sensitivity" class="btn">감도 설정</button>
-        <button id="instructions-difficulty" class="btn">난이도 수정</button>
+      <div style="text-align:center;margin-top:8px;">
+        <button id="instructions-start" class="btn primary" style="font-size:1.3rem;padding:0.85rem 3rem;display:block;width:fit-content;margin:0 auto 12px;">게임 시작</button>
+        <div class="button-row" style="justify-content:center;margin-top:0;">
+          <button id="instructions-multiplayer" class="btn" style="display:none;">온라인 대전</button>
+          <button id="instructions-sensitivity" class="btn">감도 설정</button>
+          <button id="instructions-difficulty" class="btn">난이도 수정</button>
+        </div>
       </div>
     </div>
   </section>
@@ -96,10 +87,16 @@
   <section id="screen-matching" class="screen card-screen">
     <div class="card">
       <h1>ONLINE MATCH</h1>
-      <p class="subtitle" id="matching-status">대기열에서 상대를 찾는 중...</p>
-      <p class="hint">같은 순간에 다른 사람이 대기열에 들어오면 자동으로 매칭됩니다.</p>
+      <div id="matching-waiting">
+        <div class="spinner"></div>
+        <p class="matching-label">상대를 찾는 중<span class="dots"></span></p>
+      </div>
+      <div id="matching-found" style="display:none;">
+        <div class="match-found-badge">✓ 매칭 완료</div>
+        <p class="match-vs"><span id="match-my-name"></span> <span class="vs-text">VS</span> <span id="match-opponent-name"></span></p>
+        <p class="hint">잠시 후 난이도를 선택합니다...</p>
+      </div>
       <div class="button-row">
-        <button id="matching-ai" class="btn primary">AI랑 대결하기</button>
         <button id="matching-cancel" class="btn">취소</button>
       </div>
     </div>
@@ -136,7 +133,6 @@
     <div class="card wide">
       <h1>SCOREBOARD</h1>
       <p id="finished-subtitle" class="subtitle"></p>
-      <p id="coin-status" class="hint"></p>
       <table id="scoreboard-table">
         <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
         <tbody id="scoreboard-body"></tbody>

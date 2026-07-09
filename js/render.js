@@ -375,7 +375,7 @@ export function drawGameOverButtons(ctx, game, uiInfo) {
     ? [["다음 판", "next"], ["스코어보드", "finish"]]
     : [["스코어보드", "finish"]];
   const cx = BOARD_X + BOARD_W / 2;
-  const y = 336;
+  const y = TOP_PAD + ROWS * CELL / 2 + 60;
   const totalWidth = buttons.length * 112 + (buttons.length - 1) * 12;
   const startX = cx - totalWidth / 2;
   const rects = [];
@@ -496,32 +496,51 @@ export function renderGame(ctx, game, uiInfo) {
   let gameOverRects = [];
   if (uiInfo.settingsOpen) {
     drawSettingsOverlay(ctx, game.settings, uiInfo.settingsIndex, uiInfo.settingRows);
-  } else if (uiInfo.youWin) {
-    ctx.fillStyle = "rgba(220,252,231,0.92)";
-    ctx.fillRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+  } else if (uiInfo.matchOutcome === "win" || uiInfo.youWin) {
+    ctx.fillStyle = "rgba(220,252,231,0.96)";
+    ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
     ctx.strokeStyle = COLORS_BG.GOOD;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(BOARD_X + 2, TOP_PAD + 2, BOARD_W - 4, ROWS * CELL - 4);
     ctx.fillStyle = COLORS_BG.GOOD;
-    ctx.font = "bold 36px Helvetica, Arial, sans-serif";
+    ctx.font = "bold 64px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("YOU WIN!", BOARD_X + BOARD_W / 2, 292);
-    ctx.font = "bold 14px Helvetica, Arial, sans-serif";
+    ctx.fillText("YOU WIN!", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 - 40);
+    ctx.font = "bold 18px Helvetica, Arial, sans-serif";
     ctx.fillStyle = "#16a34a";
-    ctx.fillText("상대방이 먼저 게임오버!", BOARD_X + BOARD_W / 2, 328);
+    ctx.fillText(uiInfo.matchDetail || "상대방이 먼저 게임오버!", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
+    gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
+  } else if (uiInfo.matchOutcome === "draw") {
+    ctx.fillStyle = "rgba(255,251,235,0.96)";
+    ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(BOARD_X + 2, TOP_PAD + 2, BOARD_W - 4, ROWS * CELL - 4);
+    ctx.fillStyle = "#d97706";
+    ctx.font = "bold 64px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("DRAW!", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 - 40);
+    ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+    ctx.fillText(uiInfo.matchDetail || "동점입니다.", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
     gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   } else if (game.gameOver) {
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
     ctx.strokeStyle = COLORS_BG.PLAY_LINE;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(BOARD_X + 2, TOP_PAD + 2, BOARD_W - 4, ROWS * CELL - 4);
     ctx.fillStyle = COLORS_BG.PLAY_LINE;
-    ctx.font = "bold 24px Helvetica, Arial, sans-serif";
+    ctx.font = "bold 48px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("GAME OVER", BOARD_X + BOARD_W / 2, 292);
+    ctx.fillText("GAME OVER", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 - 40);
+    if (uiInfo.matchDetail) {
+      ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+      ctx.fillStyle = COLORS_BG.BAD;
+      ctx.fillText(uiInfo.matchDetail, BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
+    }
     gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   }
   return { gameOverRects };

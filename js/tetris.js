@@ -5,7 +5,7 @@ import {
   DANGER_TOP_ROWS, CLEAR_STEP_DELAY, CLEAR_FINAL_DELAY, PIECE_ANIMATION_SPEED,
   GAME_TIME_LIMIT, LOCK_DELAY, LOCK_RESET_LIMIT, TIME_SPEEDUP_MS_PER_SECOND,
 } from "./constants.js";
-import { randomTileNumber, isPrime } from "./numbers.js";
+import { isPrime, createNumberBag, drawFromNumberBag } from "./numbers.js";
 
 function pieceCells(piece, x = piece.x, y = piece.y, rotation = piece.rotation) {
   return SHAPES[piece.kind][rotation].map(([dx, dy]) => [x + dx, y + dy]);
@@ -35,6 +35,7 @@ export class TetrisGame {
     this.lastRotationKickIndex = null;
     this.current = null;
     this.gameOver = false;
+    this.gameOverReason = "";
     this.runRecorded = false;
 
     this.pressed = new Set();
@@ -62,6 +63,8 @@ export class TetrisGame {
     this.nextClearStepAt = 0;
     this.clearFinishAt = 0;
 
+    this.numberBag = createNumberBag(this.maxNumber);
+
     this.rotateEffectCells = [];
     this.rotateEffectUntil = 0;
     this.nextDangerFlashAt = 0;
@@ -80,7 +83,7 @@ export class TetrisGame {
   }
 
   makePiece(kind) {
-    return { kind, number: randomTileNumber(this.maxNumber), x: 4, y: 0, rotation: 0 };
+    return { kind, number: drawFromNumberBag(this.numberBag), x: 4, y: 0, rotation: 0 };
   }
 
   drawFromBag() {
@@ -103,7 +106,7 @@ export class TetrisGame {
     this.lastMoveWasRotation = false;
     this.lastRotationKickIndex = null;
     if (!this.valid(pieceCells(piece))) {
-      this.triggerGameOver();
+      this.triggerGameOver(undefined, "topout");
     }
     return piece;
   }
@@ -167,9 +170,11 @@ export class TetrisGame {
   }
 
   rotationKicks(oldRotation, newRotation) {
-    if (this.current.kind === "I") return I_KICKS[`${oldRotation},${newRotation}`];
     if (this.current.kind === "O") return [[0, 0]];
-    return JLSTZ_KICKS[`${oldRotation},${newRotation}`];
+    const key = `${oldRotation},${newRotation}`;
+    const kicks = this.current.kind === "I" ? I_KICKS[key] : JLSTZ_KICKS[key];
+    if (kicks) return kicks;
+    return [[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1], [2, 0], [-2, 0], [0, -2], [0, 2], [1, -1], [-1, -1], [1, 1], [-1, 1]];
   }
 
   rotate(direction) {
@@ -235,7 +240,7 @@ export class TetrisGame {
       this.lastMoveWasRotation = false;
       this.lastRotationKickIndex = null;
       this.syncVisualToCurrent();
-      if (!this.valid(pieceCells(this.current))) this.triggerGameOver();
+      if (!this.valid(pieceCells(this.current))) this.triggerGameOver(undefined, "topout");
     }
   }
 
@@ -258,7 +263,7 @@ export class TetrisGame {
     const [spinLabel, spinMultiplier] = this.spinResultForLock();
     for (const [x, y] of pieceCells(this.current)) {
       if (y < 0) {
-        this.triggerGameOver();
+        this.triggerGameOver(undefined, "topout");
         return;
       }
       this.board[y][x] = { kind: this.current.kind, number: this.current.number, prime: this.isPrimePiece(this.current) };
@@ -443,7 +448,8 @@ export class TetrisGame {
   gravityDelay() {
     const elapsed = Math.max(0, performance.now() / 1000 - this.runStartedAt);
     const timePressure = elapsed * TIME_SPEEDUP_MS_PER_SECOND;
-    const delayMs = 820 - timePressure;
+    const linePressure = this.lines * 3;
+    const delayMs = 1230 - timePressure - linePressure;
     return Math.max(90, delayMs) / 1000;
   }
 
@@ -452,9 +458,10 @@ export class TetrisGame {
     return Math.max(0, GAME_TIME_LIMIT - Math.floor(clock - this.runStartedAt));
   }
 
-  triggerGameOver(now = performance.now() / 1000) {
+  triggerGameOver(now = performance.now() / 1000, reason = "topout") {
     if (this.gameOver) return;
     this.gameOver = true;
+    this.gameOverReason = reason;
     this.gameOverAt = now;
   }
 
@@ -483,7 +490,7 @@ export class TetrisGame {
 
   applyHeldMovement(now) {
     let direction = 0;
-    if (this.pressed.has("left") || this.pressed.has("a")) direction -= 1;
+    if (this.pressed.has("left")) direction -= 1;
     if (this.pressed.has("right") || this.pressed.has("d")) direction += 1;
 
     if (direction !== this.moveDir) {
@@ -522,7 +529,7 @@ export class TetrisGame {
     }
     if (this.gameOver) return;
     if (this.remainingTime(now) <= 0) {
-      this.triggerGameOver(now);
+      this.triggerGameOver(now, "time");
       return;
     }
     if (this.clearingAnimation) {

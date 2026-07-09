@@ -1,7 +1,16 @@
 import { DEFAULT_SETTINGS, SEED_SCOREBOARD } from "./constants.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase-config.js";
 
 const SETTINGS_KEY = "mathtetris_settings";
-const SCOREBOARD_KEY = "mathtetris_scoreboard_extra";
+const SCOREBOARD_FALLBACK_KEY = "mathtetris_scoreboard_extra";
+
+function getSupabase() {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes("YOUR-PROJECT")) {
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  return null;
+}
 
 export function loadSettings() {
   try {
@@ -20,26 +29,36 @@ export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-export function loadScoreboard() {
+export async function loadScoreboard() {
+  const client = getSupabase();
+  if (client) {
+    const { data, error } = await client
+      .from("scoreboard")
+      .select("*")
+      .order("best_score", { ascending: false })
+      .limit(100);
+    if (!error && data) return data;
+  }
   let extra = [];
   try {
-    extra = JSON.parse(localStorage.getItem(SCOREBOARD_KEY) || "[]");
+    extra = JSON.parse(localStorage.getItem(SCOREBOARD_FALLBACK_KEY) || "[]");
     if (!Array.isArray(extra)) extra = [];
-  } catch {
-    extra = [];
-  }
+  } catch { extra = []; }
   return [...SEED_SCOREBOARD, ...extra].sort((a, b) => b.best_score - a.best_score);
 }
 
-export function appendScoreboardEntry(entry) {
-  let extra = [];
-  try {
-    extra = JSON.parse(localStorage.getItem(SCOREBOARD_KEY) || "[]");
-    if (!Array.isArray(extra)) extra = [];
-  } catch {
-    extra = [];
+export async function appendScoreboardEntry(entry) {
+  const client = getSupabase();
+  if (client) {
+    await client.from("scoreboard").insert(entry);
+  } else {
+    let extra = [];
+    try {
+      extra = JSON.parse(localStorage.getItem(SCOREBOARD_FALLBACK_KEY) || "[]");
+      if (!Array.isArray(extra)) extra = [];
+    } catch { extra = []; }
+    extra.push(entry);
+    localStorage.setItem(SCOREBOARD_FALLBACK_KEY, JSON.stringify(extra));
   }
-  extra.push(entry);
-  localStorage.setItem(SCOREBOARD_KEY, JSON.stringify(extra));
   return loadScoreboard();
 }

@@ -661,9 +661,12 @@ function recordRunScore() {
   }
 }
 
-function finishSession() {
+async function finishSession() {
   sound.stopMusic();
   session.screen = "finished";
+  showScreen("screen-finished");
+  el("finished-subtitle").textContent = `${session.studentName} 최고 점수: ${session.bestSessionScore ?? 0}`;
+  el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#64748b;'>불러오는 중...</td></tr>";
   if (game && !game.runRecorded) recordRunScore();
   if (session.bestSessionScore === null && game) session.bestSessionScore = game.score;
   if (!session.recordSaved) {
@@ -673,7 +676,7 @@ function finishSession() {
     const playedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const scoreboardId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     session.currentScoreboardId = scoreboardId;
-    appendScoreboardEntry({
+    await appendScoreboardEntry({
       scoreboard_id: scoreboardId,
       student_id: session.studentId,
       name: session.studentName,
@@ -685,13 +688,12 @@ function finishSession() {
     });
     session.recordSaved = true;
   }
-  showFinishedScreen();
-  showScreen("screen-finished");
+  await showFinishedScreen();
 }
 
-function showFinishedScreen() {
+async function showFinishedScreen() {
   el("finished-subtitle").textContent = `${session.studentName} 최고 점수: ${session.bestSessionScore ?? 0}`;
-  const scoreboard = loadScoreboard();
+  const scoreboard = await loadScoreboard();
   const body = el("scoreboard-body");
   body.innerHTML = "";
   const currentIndex = scoreboard.findIndex((row) => row.scoreboard_id && row.scoreboard_id === session.currentScoreboardId);

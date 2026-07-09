@@ -35,7 +35,10 @@ export class Matchmaker {
       if (entries.length >= 2) {
         const [a, b] = entries;
         if (this.myId === a.id) {
-          channel.send({ type: "broadcast", event: "matched", payload: { pair: [a.id, b.id], roomId: `${a.id}_${b.id}` } });
+          const roomId = `${a.id}_${b.id}`;
+          channel.send({ type: "broadcast", event: "matched", payload: { pair: [a.id, b.id], roomId } });
+          this.matched = true;
+          setTimeout(() => this._enterRoom(roomId), 0);
         }
       }
     });

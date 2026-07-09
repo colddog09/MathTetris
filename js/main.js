@@ -32,6 +32,7 @@ const session = {
   musicStoppedOnEnd: false,
   myReady: false,
   opponentReady: false,
+  opponentName: "상대방",
 };
 
 let game = null;
@@ -154,13 +155,28 @@ function showInstructions() {
   showScreen("screen-instructions");
 }
 
+function showReadyScreen() {
+  const [, label, maxNumber] = DIFFICULTIES[session.difficultyIndex];
+  session.myReady = false;
+  session.opponentReady = false;
+  el("ready-my-name").textContent = session.studentName;
+  el("ready-opponent-name").textContent = session.opponentName || "상대방";
+  el("ready-difficulty-label").textContent = `난이도: ${label} (0~${maxNumber})`;
+  el("ready-btn").disabled = false;
+  el("ready-btn").textContent = "준비 완료";
+  el("ready-status").textContent = "준비 완료를 눌러 게임을 시작하세요.";
+  session.screen = "ready";
+  showScreen("screen-ready");
+}
+
 function selectDifficulty(index) {
   clickSound();
   session.difficultyIndex = index;
   const [, label, maxNumber] = DIFFICULTIES[index];
   el("instructions-subtitle").textContent = `${session.studentName} / ${session.totalRuns}회 플레이 / ${label} 0~${maxNumber}`;
   if (session.multiplayer && matchmaker.connected()) {
-    startMatchedRun(index, true);
+    matchmaker.sendCommand("difficulty", { index });
+    showReadyScreen();
   } else if (session.mode === "multi") {
     startMatching();
   } else {
@@ -225,51 +241,53 @@ function startMatching() {
     matchmaker.onRemoteState = (state) => { remoteState = state; };
     matchmaker.onDisconnect = () => { remoteState = { ...remoteState, gameOver: true }; };
     matchmaker.onCommand = (cmd, data) => {
-      if (cmd === "ready") {
+      if (cmd === "difficulty") {
+        session.difficultyIndex = data.index;
+        showReadyScreen();
+      } else if (cmd === "ready") {
         session.opponentReady = true;
-        el("match-ready-status").textContent = "상대방 준비 완료! " + (session.myReady ? "게임 시작 중..." : "당신도 준비하세요.");
+        if (session.screen === "ready") {
+          el("ready-status").textContent = "상대방 준비 완료! " + (session.myReady ? "게임 시작 중..." : "당신도 준비하세요.");
+        }
         checkBothReady();
       }
     };
     remoteState = {};
     session.multiplayer = true;
-    session.myReady = false;
-    session.opponentReady = false;
+    session.opponentName = opponentName || "상대방";
     el("matching-waiting").style.display = "none";
     el("matching-found").style.display = "block";
     el("match-my-name").textContent = session.studentName;
-    el("match-opponent-name").textContent = opponentName || "상대방";
-    el("match-ready-btn").disabled = false;
-    el("match-ready-btn").textContent = "준비 완료";
-    el("match-ready-status").textContent = "난이도를 선택하고 준비 완료를 누르세요.";
-    const sel = el("match-difficulty-select");
-    sel.innerHTML = "";
-    DIFFICULTIES.forEach(([, label, maxNum], i) => {
-      const opt = document.createElement("option");
-      opt.value = i;
-      opt.textContent = `${label} (0~${maxNum})`;
-      sel.appendChild(opt);
-    });
-    sel.value = session.difficultyIndex;
+    el("match-opponent-name").textContent = session.opponentName;
+    showMatchedDifficulty();
   }, session.studentName);
 }
 
 function checkBothReady() {
   if (session.myReady && session.opponentReady) {
-    session.difficultyIndex = parseInt(el("match-difficulty-select").value, 10);
     startMatchedRun(session.difficultyIndex, false);
   }
 }
 
-el("match-ready-btn").addEventListener("click", () => {
+el("ready-btn").addEventListener("click", () => {
   clickSound();
   session.myReady = true;
-  session.difficultyIndex = parseInt(el("match-difficulty-select").value, 10);
   matchmaker.sendCommand("ready");
-  el("match-ready-btn").disabled = true;
-  el("match-ready-btn").textContent = "대기 중...";
-  el("match-ready-status").textContent = session.opponentReady ? "게임 시작 중..." : "상대방을 기다리는 중...";
+  el("ready-btn").disabled = true;
+  el("ready-btn").textContent = "대기 중...";
+  el("ready-status").textContent = session.opponentReady ? "게임 시작 중..." : "상대방을 기다리는 중...";
   checkBothReady();
+});
+
+el("ready-cancel").addEventListener("click", () => {
+  clickSound();
+  matchmaker.leaveRoom();
+  session.multiplayer = false;
+  remoteState = null;
+  el("matching-waiting").style.display = "block";
+  el("matching-found").style.display = "none";
+  session.screen = "mode";
+  showScreen("screen-mode");
 });
 
 // ---------- Screen: online matching ----------
@@ -870,7 +888,7 @@ function frame() {
         session.musicStoppedOnEnd = true;
       }
       if (session.multiplayer && session.runNumber >= session.totalRuns) {
-        setTimeout(() => finishSession(), 4000);
+        // 버튼 클릭으로만 finishSession 진행
       }
     }
     const onlineActive = session.multiplayer && matchmaker.connected();

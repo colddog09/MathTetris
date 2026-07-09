@@ -94,14 +94,25 @@
       <div id="matching-found" style="display:none;">
         <div class="match-found-badge">✓ 매칭 완료</div>
         <p class="match-vs"><span id="match-my-name"></span> <span class="vs-text">VS</span> <span id="match-opponent-name"></span></p>
-        <div class="ready-section">
-          <select id="match-difficulty-select" class="difficulty-select"></select>
-          <button id="match-ready-btn" class="btn primary">준비 완료</button>
-          <p id="match-ready-status" class="hint"></p>
-        </div>
+        <p class="hint">난이도를 선택하세요...</p>
       </div>
       <div class="button-row">
         <button id="matching-cancel" class="btn">취소</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-ready" class="screen card-screen">
+    <div class="card">
+      <h1>READY?</h1>
+      <p class="match-vs"><span id="ready-my-name"></span> <span class="vs-text">VS</span> <span id="ready-opponent-name"></span></p>
+      <p id="ready-difficulty-label" class="subtitle"></p>
+      <div class="ready-section">
+        <button id="ready-btn" class="btn primary" style="font-size:1.2rem;padding:0.75rem 2.5rem;">준비 완료</button>
+        <p id="ready-status" class="hint" style="margin-top:12px;"></p>
+      </div>
+      <div class="button-row">
+        <button id="ready-cancel" class="btn">취소</button>
       </div>
     </div>
   </section>

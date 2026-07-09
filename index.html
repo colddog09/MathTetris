@@ -23,6 +23,24 @@
     </div>
   </section>
 
+  <section id="screen-mode" class="screen card-screen">
+    <div class="card">
+      <h1>MODE</h1>
+      <p class="subtitle">플레이 방식을 선택하세요</p>
+      <div class="mode-options">
+        <button id="mode-single" class="mode-card">
+          <b>싱글 플레이</b>
+          <span>혼자 점수를 쌓아 최고 기록에 도전합니다.</span>
+        </button>
+        <button id="mode-multiplayer" class="mode-card">
+          <b>멀티 플레이</b>
+          <span>온라인 상대 또는 AI와 대결합니다.</span>
+        </button>
+      </div>
+      <button id="mode-back" class="btn">뒤로</button>
+    </div>
+  </section>
+
   <section id="screen-coins" class="screen card-screen">
     <div class="card">
       <h1>COIN</h1>
@@ -39,6 +57,7 @@
     <div class="card wide">
       <h1>DIFFICULTY</h1>
       <p class="subtitle">블록에 등장하는 숫자 범위를 선택하세요</p>
+      <p id="difficulty-list-status" class="hint"></p>
       <div id="difficulty-list"></div>
       <button id="difficulty-back" class="btn">코인 수정</button>
     </div>
@@ -79,7 +98,10 @@
       <h1>ONLINE MATCH</h1>
       <p class="subtitle" id="matching-status">대기열에서 상대를 찾는 중...</p>
       <p class="hint">같은 순간에 다른 사람이 대기열에 들어오면 자동으로 매칭됩니다.</p>
-      <button id="matching-cancel" class="btn">취소</button>
+      <div class="button-row">
+        <button id="matching-ai" class="btn primary">AI랑 대결하기</button>
+        <button id="matching-cancel" class="btn">취소</button>
+      </div>
     </div>
   </section>
 
@@ -114,6 +136,7 @@
     <div class="card wide">
       <h1>SCOREBOARD</h1>
       <p id="finished-subtitle" class="subtitle"></p>
+      <p id="coin-status" class="hint"></p>
       <table id="scoreboard-table">
         <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
         <tbody id="scoreboard-body"></tbody>

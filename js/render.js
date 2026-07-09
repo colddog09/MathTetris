@@ -496,6 +496,21 @@ export function renderGame(ctx, game, uiInfo) {
   let gameOverRects = [];
   if (uiInfo.settingsOpen) {
     drawSettingsOverlay(ctx, game.settings, uiInfo.settingsIndex, uiInfo.settingRows);
+  } else if (uiInfo.youWin) {
+    ctx.fillStyle = "rgba(220,252,231,0.92)";
+    ctx.fillRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+    ctx.strokeStyle = COLORS_BG.GOOD;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(BOARD_X + 34, 250, BOARD_W - 68, 140);
+    ctx.fillStyle = COLORS_BG.GOOD;
+    ctx.font = "bold 36px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("YOU WIN!", BOARD_X + BOARD_W / 2, 292);
+    ctx.font = "bold 14px Helvetica, Arial, sans-serif";
+    ctx.fillStyle = "#16a34a";
+    ctx.fillText("상대방이 먼저 게임오버!", BOARD_X + BOARD_W / 2, 328);
+    gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   } else if (game.gameOver) {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(BOARD_X + 34, 250, BOARD_W - 68, 140);

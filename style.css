@@ -119,6 +119,44 @@ input[type="text"], input[type="number"] {
 
 .btn:hover { filter: brightness(0.95); }
 
+.mode-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 18px 0 4px;
+}
+
+.mode-card {
+  display: block;
+  width: 100%;
+  padding: 18px 20px;
+  border: 2px solid #bfdbfe;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #1f2937;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mode-card:hover {
+  background: #eef6ff;
+  border-color: #2563eb;
+}
+
+.mode-card b {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.mode-card span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.45;
+}
+
 #difficulty-list {
   text-align: left;
   margin-bottom: 8px;

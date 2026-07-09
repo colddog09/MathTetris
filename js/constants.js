@@ -31,8 +31,8 @@ export const COLORS_BG = {
 
 export const PRIME_SCORE = 10;
 export const COMPOSITE_SCORE = -15;
-export const DISCARD_PRIME_BONUS = 10;
-export const DISCARD_COMPOSITE_PENALTY = -20;
+export const DISCARD_PRIME_PENALTY = -10;
+export const DISCARD_COMPOSITE_BONUS = 20;
 export const SOFT_DROP_SLOWDOWN = 1.37;
 export const PRIME_CHANCE = 0.6;
 export const EVEN_COMPOSITE_WEIGHT = 0.18;

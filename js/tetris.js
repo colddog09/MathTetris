@@ -1,6 +1,6 @@
 import {
   COLS, ROWS, SPAWN_Y, SHAPES, JLSTZ_KICKS, I_KICKS, IMMOBILE_SPIN_KINDS,
-  PRIME_SCORE, COMPOSITE_SCORE, DISCARD_PRIME_BONUS, DISCARD_COMPOSITE_PENALTY, SOFT_DROP_SLOWDOWN,
+  PRIME_SCORE, COMPOSITE_SCORE, DISCARD_PRIME_PENALTY, DISCARD_COMPOSITE_BONUS, SOFT_DROP_SLOWDOWN,
   T_SPIN_SCORE_MULTIPLIER, OTHER_SPIN_SCORE_MULTIPLIER,
   DANGER_TOP_ROWS, CLEAR_STEP_DELAY, CLEAR_FINAL_DELAY, PIECE_ANIMATION_SPEED,
   GAME_TIME_LIMIT, LOCK_DELAY, LOCK_RESET_LIMIT, TIME_SPEEDUP_MS_PER_SECOND,
@@ -242,7 +242,7 @@ export class TetrisGame {
   discardPiece() {
     if (this.gameOver || this.clearingAnimation) return;
     this.discards += 1;
-    const discardScore = this.isPrimePiece(this.current) ? DISCARD_PRIME_BONUS : DISCARD_COMPOSITE_PENALTY;
+    const discardScore = this.isPrimePiece(this.current) ? DISCARD_PRIME_PENALTY : DISCARD_COMPOSITE_BONUS;
     this.score += discardScore;
     this.lastClear = discardScore;
     this.showScorePopup(discardScore, "TRASH");

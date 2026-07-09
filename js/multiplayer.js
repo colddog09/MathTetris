@@ -72,6 +72,11 @@ export class Matchmaker {
       if (this.onRemoteState) this.onRemoteState(payload);
     });
 
+    channel.on("broadcast", { event: "command" }, ({ payload }) => {
+      if (payload.id === this.myId) return;
+      if (this.onCommand) this.onCommand(payload.cmd, payload.data);
+    });
+
     channel.on("presence", { event: "leave" }, ({ leftPresences }) => {
       const opponentLeft = leftPresences.some((p) => p.id !== this.myId);
       if (opponentLeft && this.onDisconnect) this.onDisconnect();
@@ -88,6 +93,11 @@ export class Matchmaker {
   sendState(state) {
     if (!this.roomChannel) return;
     this.roomChannel.send({ type: "broadcast", event: "state", payload: { id: this.myId, ...state } });
+  }
+
+  sendCommand(cmd, data = {}) {
+    if (!this.roomChannel) return;
+    this.roomChannel.send({ type: "broadcast", event: "command", payload: { id: this.myId, cmd, data } });
   }
 
   leaveRoom() {

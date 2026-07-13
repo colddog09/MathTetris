@@ -9,9 +9,9 @@ function drawCell(ctx, x, y, cell, { alpha = false, showNumber = true, pixelDx =
   const right = left + CELL - 2;
   const bottom = top + CELL - 2;
   if (alpha) {
-    ctx.fillStyle = "rgba(203, 213, 225, 0.45)";
+    ctx.fillStyle = "rgba(122, 114, 100, 0.24)";
     ctx.fillRect(left + 3, top + 3, right - left - 6, bottom - top - 6);
-    ctx.strokeStyle = "#94a3b8";
+    ctx.strokeStyle = COLORS_BG.GHOST;
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 3]);
     ctx.strokeRect(left + 1, top + 1, right - left - 2, bottom - top - 2);
@@ -23,8 +23,8 @@ function drawCell(ctx, x, y, cell, { alpha = false, showNumber = true, pixelDx =
   const edge = COLOR_EDGES[kind] || COLORS_BG.BLOCK_EDGE;
   const light = COLOR_LIGHTS[kind] || "#ffffff";
   const shadow = COLOR_SHADOWS[kind] || edge;
-  const textFill = ["O", "S", "J", "L"].includes(kind) ? "#111827" : "#ffffff";
-  const textShadow = textFill === "#111827" ? "#ffffff" : "#111827";
+  const textFill = ["O", "S", "J", "L"].includes(kind) ? "#2a2620" : "#ffffff";
+  const textShadow = textFill === "#2a2620" ? "#ffffff" : "#2a2620";
 
   ctx.fillStyle = edge;
   ctx.fillRect(left, top, right - left, bottom - top);
@@ -88,8 +88,8 @@ function drawCurrentPieceNumber(ctx, game, pixelDx, pixelDy) {
   const number = String(game.current.number);
   const size = number.length <= 2 ? 24 : 20;
   const kind = game.current.kind;
-  const fill = ["O", "S", "J", "L"].includes(kind) ? "#111827" : "#ffffff";
-  const outline = fill === "#111827" ? "#ffffff" : "#111827";
+  const fill = ["O", "S", "J", "L"].includes(kind) ? "#2a2620" : "#ffffff";
+  const outline = fill === "#2a2620" ? "#ffffff" : "#2a2620";
   ctx.font = `bold ${size}px Helvetica, Arial, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -153,16 +153,16 @@ function drawDangerWarning(ctx, game) {
   if (!danger || game.gameOver) return;
   const now = performance.now() / 1000;
   const flash = Math.floor(now * (danger >= 2 ? 5 : 3)) % 2 === 0;
-  ctx.fillStyle = flash ? "rgba(239,68,68,0.22)" : "rgba(239,68,68,0.12)";
+  ctx.fillStyle = flash ? "rgba(184,95,61,0.22)" : "rgba(184,95,61,0.12)";
   ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
-  const outline = danger >= 2 ? "#dc2626" : "#f87171";
+  const outline = danger >= 2 ? "#96582c" : "#c0783c";
   ctx.strokeStyle = outline;
   ctx.lineWidth = 2;
   for (let offset = 0; offset < 3; offset++) {
     ctx.strokeRect(BOARD_X + offset * 2, TOP_PAD + offset * 2, BOARD_W - offset * 4, ROWS * CELL - offset * 4);
   }
   if (danger >= 2 && flash) {
-    ctx.fillStyle = "#b91c1c";
+    ctx.fillStyle = "#96582c";
     ctx.font = "bold 18px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("DANGER", BOARD_X + BOARD_W / 2, TOP_PAD + 34);
@@ -180,7 +180,7 @@ function drawPanel(ctx, game, uiInfo) {
   ctx.strokeStyle = COLORS_BG.PLAY_LINE;
   ctx.lineWidth = 3;
   ctx.strokeRect(leftX, 54, panelW, 190 - 54);
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#eee8db";
   ctx.fillRect(leftX, 54, panelW, headerH);
   ctx.strokeRect(leftX, 54, panelW, headerH);
   ctx.fillStyle = COLORS_BG.PLAY_LINE;
@@ -189,17 +189,36 @@ function drawPanel(ctx, game, uiInfo) {
   ctx.textBaseline = "middle";
   ctx.fillText("HOLD", leftX + 7, 67);
   drawMiniPiece(ctx, game.hold, leftX + panelW / 2, 132);
+  if (uiInfo.holdSealed) {
+    ctx.fillStyle = "rgba(150,88,44,.88)";
+    ctx.fillRect(leftX + 3, 81, panelW - 6, 105);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 13px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("HOLD SEALED", leftX + panelW / 2, 134);
+  }
 
   ctx.fillStyle = COLORS_BG.PLAY_PANEL;
   ctx.fillRect(rightX, 54, panelW, 586 - 54);
   ctx.strokeStyle = COLORS_BG.PLAY_LINE;
   ctx.strokeRect(rightX, 54, panelW, 586 - 54);
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#eee8db";
   ctx.fillRect(rightX, 54, panelW, headerH);
   ctx.strokeRect(rightX, 54, panelW, headerH);
   ctx.fillStyle = COLORS_BG.PLAY_LINE;
   ctx.fillText("NEXT", rightX + 7, 67);
-  game.queue.slice(0, 5).forEach((piece, i) => drawMiniPiece(ctx, piece, rightX + panelW / 2, 128 + i * 88));
+  if (uiInfo.hideNext) {
+    ctx.fillStyle = "#eee8db";
+    ctx.fillRect(rightX + 3, 81, panelW - 6, 500);
+    ctx.fillStyle = COLORS_BG.BAD;
+    ctx.font = "bold 18px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("?", rightX + panelW / 2, 162);
+    ctx.font = "bold 11px Helvetica, Arial, sans-serif";
+    ctx.fillText("PREVIEW BLOCKED", rightX + panelW / 2, 190);
+  } else {
+    game.queue.slice(0, 5).forEach((piece, i) => drawMiniPiece(ctx, piece, rightX + panelW / 2, 128 + i * 88));
+  }
 
   const scoreText = String(game.score);
   const scoreSize = scoreText.length <= 5 ? 31 : scoreText.length <= 7 ? 25 : 20;
@@ -241,7 +260,7 @@ function drawPanel(ctx, game, uiInfo) {
     ctx.font = "bold 11px Helvetica, Arial, sans-serif";
     ctx.fillText(status, leftX + panelW - 8, 604);
     ctx.textAlign = "left";
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = COLORS_BG.MUTED;
     ctx.font = "bold 9px Helvetica, Arial, sans-serif";
     ctx.fillText("OP SCORE", leftX + 10, 626);
     ctx.textAlign = "right";
@@ -249,7 +268,7 @@ function drawPanel(ctx, game, uiInfo) {
     ctx.font = "bold 11px Helvetica, Arial, sans-serif";
     ctx.fillText(String(remoteScore), leftX + panelW - 8, 626);
     ctx.textAlign = "left";
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = COLORS_BG.MUTED;
     ctx.font = "bold 9px Helvetica, Arial, sans-serif";
     ctx.fillText(`LINES ${remoteLines}`, leftX + 10, 646);
     ctx.textAlign = "right";
@@ -263,7 +282,7 @@ function drawPanel(ctx, game, uiInfo) {
   ctx.fillRect(rightX, infoTop, panelW, 172);
   ctx.strokeStyle = COLORS_BG.PLAY_LINE;
   ctx.strokeRect(rightX, infoTop, panelW, 172);
-  ctx.fillStyle = "#e2e8f0";
+  ctx.fillStyle = "#eee8db";
   ctx.fillRect(rightX, infoTop, panelW, 34);
   ctx.strokeRect(rightX, infoTop, panelW, 34);
   ctx.textAlign = "left";
@@ -273,7 +292,7 @@ function drawPanel(ctx, game, uiInfo) {
   const best = uiInfo.bestSessionScore === null ? "-" : uiInfo.bestSessionScore;
   const speed = `${Math.round(game.gravityDelay() * 1000)}ms`;
   const rows = [
-    ["RUN", `${uiInfo.runNumber}/${uiInfo.totalRuns}`],
+    ["COMBO", game.combo > 0 ? `x${game.combo}` : "-"],
     ["MODE", `${uiInfo.difficultyLabel} 0~${uiInfo.maxNumber}`],
     ["BEST", best],
     ["LEVEL", game.level],
@@ -283,7 +302,7 @@ function drawPanel(ctx, game, uiInfo) {
   rows.forEach(([label, value], index) => {
     const y = infoTop + 52 + index * 19;
     const valueFill = label === "LAST" ? (game.lastClear >= 0 ? COLORS_BG.GOOD : COLORS_BG.BAD) : COLORS_BG.PLAY_LINE;
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = COLORS_BG.MUTED;
     ctx.font = "bold 11px Helvetica, Arial, sans-serif";
     ctx.fillText(label, rightX + 12, y);
     ctx.fillStyle = valueFill;
@@ -308,13 +327,13 @@ function drawScorePopup(ctx, game) {
   ctx.textBaseline = "middle";
   if (game.scorePopupLabel) {
     ctx.font = "bold 28px Helvetica, Arial, sans-serif";
-    ctx.fillStyle = "#111827";
+    ctx.fillStyle = COLORS_BG.TEXT;
     ctx.fillText(game.scorePopupLabel, cx + 2, cy - 64);
-    ctx.fillStyle = flashOn ? "#fde047" : "#a855f7";
+    ctx.fillStyle = flashOn ? "#e7c88f" : "#c0783c";
     ctx.fillText(game.scorePopupLabel, cx, cy - 66);
   }
   ctx.font = "bold 70px Helvetica, Arial, sans-serif";
-  ctx.fillStyle = flashOn ? "#ffffff" : "#fde68a";
+  ctx.fillStyle = flashOn ? "#ffffff" : "#f3dfb8";
   ctx.fillText(text, cx + 4, cy + 4);
   ctx.fillStyle = fill;
   ctx.fillText(text, cx, cy);
@@ -326,7 +345,7 @@ function drawRotateEffect(ctx, game) {
   const remaining = Math.max(0, game.rotateEffectUntil - now);
   const progress = 1 - remaining / 0.16;
   const inset = 1 + progress * 5;
-  ctx.strokeStyle = Math.floor(now * 30) % 2 === 0 ? "#f59e0b" : "#fde047";
+  ctx.strokeStyle = Math.floor(now * 30) % 2 === 0 ? "#c0783c" : "#e7c88f";
   ctx.lineWidth = 2;
   for (const [x, y] of game.rotateEffectCells) {
     ctx.strokeRect(BOARD_X + x * CELL + inset, TOP_PAD + y * CELL + inset, CELL - inset * 2, CELL - inset * 2);
@@ -352,14 +371,14 @@ function drawClearAnimation(ctx, game) {
   }
   if (current) {
     const [x, y] = current;
-    ctx.strokeStyle = "#facc15";
+    ctx.strokeStyle = "#c0783c";
     ctx.lineWidth = 4;
     ctx.strokeRect(BOARD_X + x * CELL + 1, TOP_PAD + y * CELL + 1, CELL - 2, CELL - 2);
   }
   const cx = BOARD_X + COLS * CELL / 2;
-  ctx.fillStyle = "#fffdf5";
+  ctx.fillStyle = "#fdfcf8";
   ctx.fillRect(cx - 76, TOP_PAD + 36, 152, 46);
-  ctx.strokeStyle = "#facc15";
+  ctx.strokeStyle = "#c0783c";
   ctx.lineWidth = 2;
   ctx.strokeRect(cx - 76, TOP_PAD + 36, 152, 46);
   ctx.fillStyle = COLORS_BG.MUTED;
@@ -372,10 +391,10 @@ function drawClearAnimation(ctx, game) {
 
 export function drawGameOverButtons(ctx, game, uiInfo) {
   const buttons = uiInfo.runNumber < uiInfo.totalRuns
-    ? [["다음 판", "next"], ["스코어보드", "finish"]]
-    : [["스코어보드", "finish"]];
+    ? [["다음 판", "next"], ["결과 보기", "finish"]]
+    : [["결과 보기", "finish"]];
   const cx = BOARD_X + BOARD_W / 2;
-  const y = TOP_PAD + ROWS * CELL / 2 + 60;
+  const y = TOP_PAD + ROWS * CELL / 2 + 102;
   const totalWidth = buttons.length * 112 + (buttons.length - 1) * 12;
   const startX = cx - totalWidth / 2;
   const rects = [];
@@ -384,14 +403,14 @@ export function drawGameOverButtons(ctx, game, uiInfo) {
     const top = y;
     const right = left + 112;
     const bottom = y + 38;
-    ctx.fillStyle = "#cbd5e1";
-    ctx.fillRect(left + 2, top + 2, right - left, bottom - top);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "rgba(87,45,32,.28)";
+    ctx.fillRect(left + 3, top + 4, right - left, bottom - top);
+    ctx.fillStyle = action === "finish" ? "#96582c" : "#ffffff";
     ctx.fillRect(left, top, right - left, bottom - top);
-    ctx.strokeStyle = COLORS_BG.PLAY_LINE;
+    ctx.strokeStyle = action === "finish" ? "#713d2b" : COLORS_BG.PLAY_LINE;
     ctx.lineWidth = 2;
     ctx.strokeRect(left, top, right - left, bottom - top);
-    ctx.fillStyle = COLORS_BG.PLAY_LINE;
+    ctx.fillStyle = action === "finish" ? "#ffffff" : COLORS_BG.PLAY_LINE;
     ctx.font = "bold 12px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -402,9 +421,9 @@ export function drawGameOverButtons(ctx, game, uiInfo) {
 }
 
 export function drawSettingsOverlay(ctx, settings, settingsIndex, settingRows) {
-  ctx.fillStyle = "#fffdf5";
+  ctx.fillStyle = "#fdfcf8";
   ctx.fillRect(28, 118, WIDTH - 56, 492 - 118);
-  ctx.strokeStyle = "#f59e0b";
+  ctx.strokeStyle = "#c0783c";
   ctx.lineWidth = 2;
   ctx.strokeRect(28, 118, WIDTH - 56, 492 - 118);
   ctx.fillStyle = COLORS_BG.TEXT;
@@ -419,9 +438,9 @@ export function drawSettingsOverlay(ctx, settings, settingsIndex, settingRows) {
   for (let i = 0; i < settingRows.length; i++) {
     const [key, label, desc, , , , suffix] = settingRows[i];
     const selected = i === settingsIndex;
-    ctx.fillStyle = selected ? "#dbeafe" : "#fff7ed";
+    ctx.fillStyle = selected ? "#e7f0e5" : "#faeae0";
     ctx.fillRect(58, y - 24, WIDTH - 116, 50);
-    ctx.strokeStyle = selected ? "#2563eb" : "#fdba74";
+    ctx.strokeStyle = selected ? "#2f6b4f" : "#c0783c";
     ctx.lineWidth = 2;
     ctx.strokeRect(58, y - 24, WIDTH - 116, 50);
     ctx.textAlign = "left";
@@ -443,7 +462,7 @@ export function renderGame(ctx, game, uiInfo) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.fillStyle = COLORS_BG.PLAY_BG;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = "#f8fbff";
+  ctx.fillStyle = COLORS_BG.BG;
   ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
   ctx.strokeStyle = COLORS_BG.PLAY_GRID;
   ctx.lineWidth = 1;
@@ -497,7 +516,7 @@ export function renderGame(ctx, game, uiInfo) {
   if (uiInfo.settingsOpen) {
     drawSettingsOverlay(ctx, game.settings, uiInfo.settingsIndex, uiInfo.settingRows);
   } else if (uiInfo.matchOutcome === "win" || uiInfo.youWin) {
-    ctx.fillStyle = "rgba(220,252,231,0.96)";
+    ctx.fillStyle = "rgba(231,240,229,0.96)";
     ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
     ctx.strokeStyle = COLORS_BG.GOOD;
     ctx.lineWidth = 4;
@@ -508,16 +527,16 @@ export function renderGame(ctx, game, uiInfo) {
     ctx.textBaseline = "middle";
     ctx.fillText("YOU WIN!", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 - 40);
     ctx.font = "bold 18px Helvetica, Arial, sans-serif";
-    ctx.fillStyle = "#16a34a";
+    ctx.fillStyle = COLORS_BG.ACCENT_DARK;
     ctx.fillText(uiInfo.matchDetail || "상대방이 먼저 게임오버!", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
     gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   } else if (uiInfo.matchOutcome === "draw") {
-    ctx.fillStyle = "rgba(255,251,235,0.96)";
+    ctx.fillStyle = "rgba(250,234,224,0.96)";
     ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
-    ctx.strokeStyle = "#f59e0b";
+    ctx.strokeStyle = "#c0783c";
     ctx.lineWidth = 4;
     ctx.strokeRect(BOARD_X + 2, TOP_PAD + 2, BOARD_W - 4, ROWS * CELL - 4);
-    ctx.fillStyle = "#d97706";
+    ctx.fillStyle = "#96582c";
     ctx.font = "bold 64px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -526,21 +545,51 @@ export function renderGame(ctx, game, uiInfo) {
     ctx.fillText(uiInfo.matchDetail || "동점입니다.", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
     gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   } else if (game.gameOver) {
-    ctx.fillStyle = "rgba(255,255,255,0.96)";
+    const centerX = BOARD_X + BOARD_W / 2;
+    const centerY = TOP_PAD + ROWS * CELL / 2;
+    const isTimeUp = game.gameOverReason === "time";
+    const overlay = ctx.createLinearGradient(BOARD_X, TOP_PAD, BOARD_X, TOP_PAD + ROWS * CELL);
+    overlay.addColorStop(0, "rgba(54,35,29,0.96)");
+    overlay.addColorStop(0.55, "rgba(91,48,35,0.97)");
+    overlay.addColorStop(1, "rgba(38,31,27,0.98)");
+    ctx.fillStyle = overlay;
     ctx.fillRect(BOARD_X, TOP_PAD, BOARD_W, ROWS * CELL);
-    ctx.strokeStyle = COLORS_BG.PLAY_LINE;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(BOARD_X + 2, TOP_PAD + 2, BOARD_W - 4, ROWS * CELL - 4);
-    ctx.fillStyle = COLORS_BG.PLAY_LINE;
-    ctx.font = "bold 48px Helvetica, Arial, sans-serif";
+    ctx.strokeStyle = "#d99162";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(BOARD_X + 3, TOP_PAD + 3, BOARD_W - 6, ROWS * CELL - 6);
+    ctx.fillStyle = "#f2c19f";
+    ctx.font = "bold 12px Helvetica, Arial, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("GAME OVER", BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 - 40);
-    if (uiInfo.matchDetail) {
+    ctx.fillText(isTimeUp ? "TIME LIMIT REACHED" : "STACK LIMIT REACHED", centerX, centerY - 122);
+    ctx.fillStyle = "#fff7ed";
+    ctx.shadowColor = "rgba(0,0,0,.5)";
+    ctx.shadowBlur = 12;
+    ctx.font = "bold 52px Helvetica, Arial, sans-serif";
+    ctx.fillText(isTimeUp ? "TIME UP" : "GAME OVER", centerX, centerY - 76);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#efdbcb";
+    ctx.font = "bold 13px Helvetica, Arial, sans-serif";
+    ctx.fillText(uiInfo.matchDetail || (isTimeUp ? "제한 시간이 종료되었습니다" : "블록이 천장에 닿았습니다"), centerX, centerY - 34);
+
+    const stats = [["SCORE", game.score.toLocaleString()], ["LINES", game.lines], ["MAX COMBO", `x${game.maxCombo}`]];
+    const statWidth = 94;
+    const statGap = 7;
+    const statStart = centerX - (stats.length * statWidth + (stats.length - 1) * statGap) / 2;
+    stats.forEach(([label, value], index) => {
+      const left = statStart + index * (statWidth + statGap);
+      ctx.fillStyle = "rgba(255,247,237,.09)";
+      ctx.fillRect(left, centerY - 6, statWidth, 61);
+      ctx.strokeStyle = "rgba(242,193,159,.35)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left, centerY - 6, statWidth, 61);
+      ctx.fillStyle = "#d9aa8c";
+      ctx.font = "bold 9px Helvetica, Arial, sans-serif";
+      ctx.fillText(label, left + statWidth / 2, centerY + 12);
+      ctx.fillStyle = "#fff7ed";
       ctx.font = "bold 18px Helvetica, Arial, sans-serif";
-      ctx.fillStyle = COLORS_BG.BAD;
-      ctx.fillText(uiInfo.matchDetail, BOARD_X + BOARD_W / 2, TOP_PAD + ROWS * CELL / 2 + 20);
-    }
+      ctx.fillText(String(value), left + statWidth / 2, centerY + 37);
+    });
     gameOverRects = drawGameOverButtons(ctx, game, uiInfo);
   }
   return { gameOverRects };
@@ -558,7 +607,7 @@ function drawOpponentCell(ctx, x, y, cell) {
   const w = OPP_CELL - 2;
   const fill = COLORS[cell.kind] || COLORS_BG.BLOCK_FILL;
   const edge = COLOR_EDGES[cell.kind] || COLORS_BG.BLOCK_EDGE;
-  const textFill = ["O", "S", "J", "L"].includes(cell.kind) ? "#111827" : "#ffffff";
+  const textFill = ["O", "S", "J", "L"].includes(cell.kind) ? "#2a2620" : "#ffffff";
   ctx.fillStyle = edge;
   ctx.fillRect(left, top, w, w);
   ctx.fillStyle = fill;
@@ -572,7 +621,7 @@ function drawOpponentCell(ctx, x, y, cell) {
 
 export function renderOpponentBoard(ctx, remote) {
   ctx.clearRect(0, 0, OPP_WIDTH, OPP_HEIGHT);
-  ctx.fillStyle = "#f8fbff";
+  ctx.fillStyle = COLORS_BG.BG;
   ctx.fillRect(0, 0, OPP_WIDTH, OPP_HEIGHT);
 
   if (!remote || !remote.board) {
@@ -627,7 +676,7 @@ export function renderOpponentBoard(ctx, remote) {
   ctx.strokeRect(OPP_BOARD_X, OPP_BOARD_Y, COLS * OPP_CELL, ROWS * OPP_CELL);
 
   if (remote.gameOver) {
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.fillStyle = "rgba(253,252,248,0.78)";
     ctx.fillRect(OPP_BOARD_X, OPP_BOARD_Y, COLS * OPP_CELL, ROWS * OPP_CELL);
     ctx.fillStyle = COLORS_BG.BAD;
     ctx.font = "bold 16px Helvetica, Arial, sans-serif";

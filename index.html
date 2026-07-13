@@ -13,13 +13,35 @@
     <div class="card">
       <h1>PRIME STACK</h1>
       <p class="subtitle">소수만을 쌓아라!</p>
-      <p class="hint">학번과 이름을 입력하세요</p>
-      <label>학번</label>
-      <input id="student-id" type="text" autocomplete="off">
-      <label>이름</label>
-      <input id="student-name" type="text" autocomplete="off">
-      <p id="student-error" class="error"></p>
-      <button id="student-next" class="btn primary">다음</button>
+      <div id="qr-scan-area">
+        <p class="hint">학생증 QR 코드를 카메라에 비춰주세요</p>
+        <div id="qr-reader" style="width:260px;margin:12px auto;border-radius:8px;overflow:hidden;"></div>
+        <p id="qr-status" class="hint"></p>
+        <p id="qr-error" class="error"></p>
+      </div>
+      <div id="manual-login-area">
+        <p class="hint">학번과 이름을 입력하세요</p>
+        <label>학번</label>
+        <input id="student-id" type="text" autocomplete="off">
+        <label>이름</label>
+        <input id="student-name" type="text" autocomplete="off">
+        <p id="student-error" class="error"></p>
+        <button id="student-next" class="btn primary">다음</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-coin" class="screen card-screen">
+    <div class="card">
+      <h1>NAPLACE COIN 결제</h1>
+      <div id="coin-student-info" class="coin-info-box"></div>
+      <p id="coin-price-label" class="subtitle"></p>
+      <p id="coin-status" class="payment-status"></p>
+      <p id="coin-error" class="error"></p>
+      <div class="button-row" style="margin-top:16px;">
+        <button id="coin-back" class="btn">정보 수정</button>
+        <button id="coin-pay" class="btn primary">결제 요청 보내기</button>
+      </div>
     </div>
   </section>
 
@@ -34,7 +56,7 @@
         </button>
         <button id="mode-multiplayer" class="mode-card">
           <b>멀티 플레이</b>
-          <span>바로 상대를 찾고, 매칭 뒤 난이도를 정해 1판 대전합니다.</span>
+          <span>공개 방을 만들거나 목록에서 참가해 친구와 1판 대전합니다.</span>
         </button>
       </div>
       <button id="mode-back" class="btn">뒤로</button>
@@ -42,45 +64,104 @@
   </section>
 
   <section id="screen-difficulty" class="screen card-screen">
-    <div class="card wide">
+    <div class="card difficulty-card">
       <h1>DIFFICULTY</h1>
-      <p class="subtitle">블록에 등장하는 숫자 범위를 선택하세요</p>
+      <p class="subtitle">난이도를 누르고 보상 기준을 확인한 뒤 확정하세요</p>
       <p id="difficulty-list-status" class="hint"></p>
-      <div id="difficulty-list"></div>
-      <button id="difficulty-back" class="btn">모드 선택</button>
+      <div class="difficulty-picker">
+        <div id="difficulty-list"></div>
+        <div id="difficulty-detail" class="difficulty-detail">
+          <h2>점수 배율</h2>
+          <strong id="difficulty-score-multiplier" class="difficulty-score-multiplier">×—</strong>
+          <h3>최종 점수 기준표</h3>
+          <div id="difficulty-reward-list" class="difficulty-rewards"></div>
+        </div>
+      </div>
+      <p id="difficulty-vote-status" class="payment-status"></p>
+      <div class="button-row">
+        <button id="difficulty-back" class="btn">모드 선택</button>
+        <button id="difficulty-confirm" class="btn primary" disabled>이 난이도로 확정</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-wheel" class="screen card-screen">
+    <div class="card">
+      <h1>DIFFICULTY WHEEL</h1>
+      <p class="subtitle">서로 다른 난이도에 투표했습니다</p>
+      <div id="difficulty-wheel" class="difficulty-wheel"><span>VS</span></div>
+      <p id="wheel-options" class="match-vs"></p>
+      <p id="wheel-status" class="hint">돌림판으로 최종 난이도를 정하는 중...</p>
     </div>
   </section>
 
   <section id="screen-instructions" class="screen card-screen">
-    <div class="card wide">
-      <h1>HOW TO PLAY</h1>
-      <p id="instructions-subtitle" class="subtitle"></p>
-      <div class="rule-grid">
-        <div class="rule-card"><span class="rule-num">1</span><div><b>숫자 판별</b><p>소수는 득점, 합성수는 감점입니다.</p></div></div>
-        <div class="rule-card"><span class="rule-num">2</span><div><b>라인 삭제</b><p>줄을 지울 때 칸 점수를 한 번에 계산합니다.</p></div></div>
-        <div class="rule-card"><span class="rule-num">3</span><div><b>배율</b><p>여러 줄 삭제와 스핀은 최종 점수에 곱해집니다.</p></div></div>
-        <div class="rule-card"><span class="rule-num">4</span><div><b>폐기</b><p>X로 소수는 -10점, 합성수는 +10점입니다.</p></div></div>
-      </div>
-      <canvas id="instructions-demo-canvas" class="demo-canvas"></canvas>
-      <div class="key-grid">
-        <div><span>이동</span><kbd>←</kbd><kbd>→</kbd></div>
-        <div><span>시계 회전</span><kbd>↑</kbd></div>
-        <div><span>반시계 회전</span><kbd>Z</kbd></div>
-        <div><span>180도 회전</span><kbd>A</kbd></div>
-        <div><span>소프트 드롭</span><kbd>↓</kbd></div>
-        <div><span>하드 드롭</span><kbd class="wide-key">Space</kbd></div>
-        <div><span>홀드</span><kbd>C</kbd></div>
-        <div><span>폐기</span><kbd>X</kbd></div>
-        <div><span>설정</span><kbd>F1</kbd></div>
-      </div>
-      <div style="text-align:center;margin-top:8px;">
-        <button id="instructions-start" class="btn primary" style="font-size:1.3rem;padding:0.85rem 3rem;display:block;width:fit-content;margin:0 auto 12px;">게임 시작</button>
-        <div class="button-row" style="justify-content:center;margin-top:0;">
-          <button id="instructions-multiplayer" class="btn" style="display:none;">온라인 대전</button>
-          <button id="instructions-sensitivity" class="btn">감도 설정</button>
-          <button id="instructions-difficulty" class="btn">난이도 수정</button>
+    <div class="card wide howto-card">
+      <header class="howto-header">
+        <div>
+          <p class="howto-eyebrow">PRIME STACK · QUICK GUIDE</p>
+          <h1>HOW TO PLAY</h1>
         </div>
+        <p id="instructions-subtitle" class="howto-session"></p>
+      </header>
+
+      <div class="howto-layout">
+        <main class="howto-main">
+          <div class="howto-section-heading">
+            <span>01</span><div><b>핵심 플레이</b><small>줄을 완성하고 점수를 쌓으세요</small></div>
+          </div>
+          <div class="rule-grid">
+            <article class="rule-card prime-rule">
+              <span class="rule-num">1</span>
+              <div><b>숫자를 구분하기</b><p>소수 블록은 <strong>+10점</strong>, 합성수 블록은 <strong>−20점</strong></p></div>
+            </article>
+            <article class="rule-card">
+              <span class="rule-num">2</span>
+              <div><b>가로줄 완성하기</b><p>완성한 줄의 모든 블록 점수를 왼쪽부터 합산</p></div>
+            </article>
+            <article class="rule-card">
+              <span class="rule-num">3</span>
+              <div><b>배율 노리기</b><p>여러 줄을 동시에 지우거나 스핀하면 점수 배율 증가</p></div>
+            </article>
+            <article class="rule-card discard-rule">
+              <span class="rule-num">4</span>
+              <div><b>불필요한 블록 폐기</b><p><kbd>X</kbd> 합성수 <strong>+30점</strong> · 소수 <strong>−30점</strong></p></div>
+            </article>
+          </div>
+
+          <div class="howto-section-heading demo-heading">
+            <span>02</span><div><b>점수 계산 예시</b><small>애니메이션으로 한 번에 확인</small></div>
+          </div>
+          <canvas id="instructions-demo-canvas" class="demo-canvas"></canvas>
+        </main>
+
+        <aside class="controls-panel">
+          <div class="howto-section-heading">
+            <span>03</span><div><b>조작키</b><small>플레이 중 F1에서 감도 조절 가능</small></div>
+          </div>
+          <div class="key-grid">
+            <div><span>좌우 이동</span><span class="key-set"><kbd>←</kbd><kbd>→</kbd></span></div>
+            <div><span>소프트 드롭</span><span class="key-set"><kbd>↓</kbd></span></div>
+            <div class="key-primary"><span>하드 드롭</span><span class="key-set"><kbd class="wide-key">Space</kbd></span></div>
+            <div><span>시계 회전</span><span class="key-set"><kbd>↑</kbd></span></div>
+            <div><span>반시계 회전</span><span class="key-set"><kbd>Z</kbd></span></div>
+            <div><span>180° 회전</span><span class="key-set"><kbd>A</kbd></span></div>
+            <div><span>블록 홀드</span><span class="key-set"><kbd>C</kbd></span></div>
+            <div><span>블록 폐기</span><span class="key-set"><kbd>X</kbd></span></div>
+            <div><span>게임 설정</span><span class="key-set"><kbd>F1</kbd></span></div>
+          </div>
+          <div class="howto-tip"><b>TIP</b><p>소수만으로 완성한 줄은 안전하게 고득점을 만들 수 있습니다.</p></div>
+        </aside>
       </div>
+
+      <footer class="howto-actions">
+        <div class="howto-secondary-actions">
+          <button id="instructions-multiplayer" class="btn" style="display:none;">온라인 대전</button>
+          <button id="instructions-difficulty" class="btn">난이도 수정</button>
+          <button id="instructions-sensitivity" class="btn">감도 설정</button>
+        </div>
+        <button id="instructions-start" class="btn primary howto-start">게임 시작 <span>→</span></button>
+      </footer>
     </div>
   </section>
 
@@ -102,6 +183,56 @@
     </div>
   </section>
 
+  <section id="screen-room" class="screen card-screen">
+    <div class="card room-card">
+      <h1>MULTIPLAYER ROOM</h1>
+      <p class="subtitle">방을 만들거나 목록에서 원하는 방에 참가하세요</p>
+      <div id="room-actions">
+        <button id="room-create" class="mode-card">
+          <b>새 방 만들기</b>
+          <span>공개 방을 만들고 상대가 참가하기를 기다립니다.</span>
+        </button>
+        <div class="room-list-header"><b>참가 가능한 방</b><span id="room-count">0개</span></div>
+        <div id="room-list" class="room-list">
+          <p class="room-empty">열린 방을 찾는 중...</p>
+        </div>
+      </div>
+      <div id="room-waiting" style="display:none;">
+        <div class="spinner"></div>
+        <p id="room-waiting-title" class="matching-label">상대를 기다리는 중</p>
+        <div id="room-code-display" class="room-code">내 방</div>
+        <p id="room-waiting-hint" class="hint">방 목록에서 상대가 참가하면 자동으로 시작합니다.</p>
+        <label id="room-item-mode-control" class="item-mode-toggle">
+          <input id="room-item-mode" type="checkbox">
+          <span><b id="room-item-mode-title">아이템전</b><small id="room-item-mode-hint">대기 중 켜거나 끌 수 있습니다.</small></span>
+        </label>
+        <button id="item-rules-toggle" class="item-rules-toggle" type="button" aria-expanded="false" aria-controls="item-rules-panel">
+          <span>아이템전 설명</span><b aria-hidden="true">⌄</b>
+        </button>
+        <div id="item-rules-panel" class="item-rules-panel" hidden>
+          <section class="item-rule-summary">
+            <b>아이템 획득과 사용</b>
+            <p><strong>획득</strong> 지운 모든 줄의 모든 블록이 소수일 때 무작위 아이템 1개를 얻습니다.</p>
+            <p><strong>보관</strong> 화면의 1·2·3 슬롯에 최대 3개까지 보관됩니다.</p>
+            <p><strong>사용</strong> 게임 중 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 키 또는 슬롯을 누르면 상대에게 즉시 발동합니다.</p>
+          </section>
+          <div class="item-rule-list">
+            <article><i>●</i><div><b>먹물</b><p>상대 화면을 10초 동안 먹물로 가립니다.</p></div></article>
+            <article><i>⚡</i><div><b>초고속</b><p>상대 블록의 자동 낙하를 10초 동안 3.2배 빠르게 만듭니다.</p></div></article>
+            <article><i>↔</i><div><b>좌우 반전</b><p>상대의 좌우 이동키를 10초 동안 반대로 바꿉니다.</p></div></article>
+            <article><i>H</i><div><b>홀드 봉인</b><p>상대가 10초 동안 홀드를 사용할 수 없게 합니다.</p></div></article>
+            <article><i>?</i><div><b>미리보기 차단</b><p>상대의 NEXT 블록을 10초 동안 숨깁니다.</p></div></article>
+            <article><i>▼</i><div><b>무게추</b><p>상대가 10초 동안 하드 드롭 외 조작을 할 수 없게 합니다.</p></div></article>
+            <article><i>◇</i><div><b>방어막</b><p>다음에 들어오는 방해 아이템을 한 번 막습니다.</p></div></article>
+            <article><i>✦</i><div><b>정화</b><p>현재 적용된 모든 방해 효과를 즉시 제거합니다.</p></div></article>
+          </div>
+        </div>
+      </div>
+      <p id="room-error" class="error"></p>
+      <button id="room-cancel" class="btn">모드 선택으로</button>
+    </div>
+  </section>
+
   <section id="screen-ready" class="screen card-screen">
     <div class="card">
       <h1>READY?</h1>
@@ -113,6 +244,23 @@
       </div>
       <div class="button-row">
         <button id="ready-cancel" class="btn">취소</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-wager" class="screen card-screen">
+    <div class="card">
+      <h1>MATCH BET</h1>
+      <p class="match-vs"><span id="wager-my-name"></span> <span class="vs-text">VS</span> <span id="wager-opponent-name"></span></p>
+      <p class="hint">각자 원하는 금액을 걸고 승인하세요. 승자는 두 금액의 합계를 받습니다.</p>
+      <label>내 배팅 금액</label>
+      <input id="wager-amount" type="number" min="1" step="1" value="100">
+      <p id="wager-opponent-status" class="hint">상대 배팅 입력 대기 중</p>
+      <p id="wager-status" class="payment-status"></p>
+      <p id="wager-error" class="error"></p>
+      <div class="button-row">
+        <button id="wager-cancel" class="btn">매칭 취소</button>
+        <button id="wager-submit" class="btn primary">배팅 결제 요청</button>
       </div>
     </div>
   </section>
@@ -142,12 +290,37 @@
         <canvas id="opponent-canvas"></canvas>
       </div>
     </div>
+    <aside id="single-reward-guide" aria-label="싱글 플레이 코인 보상표">
+      <b>싱글 코인 보상</b>
+      <div id="single-reward-list"></div>
+    </aside>
+    <aside id="item-battle-ui" aria-label="아이템 슬롯">
+      <div class="item-battle-title"><b>ITEM BATTLE</b><span>올소수 줄로 획득</span></div>
+      <div class="item-slots">
+        <button class="item-slot" data-slot="0"><kbd>1</kbd><span>비어 있음</span></button>
+        <button class="item-slot" data-slot="1"><kbd>2</kbd><span>비어 있음</span></button>
+        <button class="item-slot" data-slot="2"><kbd>3</kbd><span>비어 있음</span></button>
+      </div>
+      <p id="item-effect-status"></p>
+    </aside>
+    <div id="ink-overlay" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <div id="connection-status" aria-live="polite"></div>
+    <div id="game-fx" aria-hidden="true">
+      <div id="game-fx-text"></div>
+      <div id="game-countdown-fx"></div>
+      <div id="game-over-fx"><span>RUN TERMINATED</span><strong>GAME OVER</strong></div>
+    </div>
   </section>
+
+  <div id="flow-countdown" aria-hidden="true"></div>
 
   <section id="screen-finished" class="screen card-screen">
     <div class="card wide">
       <h1>SCOREBOARD</h1>
       <p id="finished-subtitle" class="subtitle"></p>
+      <p id="finished-reward" class="reward-result"></p>
       <table id="scoreboard-table">
         <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
         <tbody id="scoreboard-body"></tbody>
@@ -155,6 +328,46 @@
       <button id="finished-restart" class="btn primary">처음으로</button>
     </div>
   </section>
+
+  <section id="screen-result" class="screen card-screen">
+    <div id="record-effects" aria-hidden="true">
+      <div class="record-rays"></div>
+      <div class="record-banner">NEW #1 RECORD</div>
+      <div id="record-confetti"></div>
+    </div>
+    <div class="card result-card">
+      <p id="result-badge" class="result-badge">GAME RESULT</p>
+      <h1 id="result-title">게임 종료</h1>
+      <div class="result-score-box">
+        <span>최종 점수</span>
+        <strong id="result-score">0</strong>
+      </div>
+      <div class="result-summary-grid">
+        <div><span>난이도</span><b id="result-difficulty"></b></div>
+        <div><span>코인 집계</span><b id="result-coins"></b></div>
+      </div>
+      <p id="result-detail" class="hint"></p>
+      <p id="result-reward-status" class="reward-result"></p>
+      <button id="result-scoreboard" class="btn primary">스코어보드 보기</button>
+    </div>
+  </section>
+
+  <div id="payment-confirm-modal" class="payment-confirm-modal" hidden>
+    <div class="payment-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-confirm-title">
+      <p class="payment-confirm-eyebrow">NAPLACE COIN</p>
+      <h2 id="payment-confirm-title">결제하시겠습니까?</h2>
+      <dl class="payment-confirm-summary">
+        <div><dt>이름</dt><dd id="payment-confirm-name">—</dd></div>
+        <div><dt>현재 잔액</dt><dd id="payment-confirm-balance">—</dd></div>
+        <div class="payment-confirm-charge"><dt>결제 금액</dt><dd id="payment-confirm-amount">—</dd></div>
+      </dl>
+      <p id="payment-confirm-warning" class="payment-confirm-warning"></p>
+      <div class="button-row">
+        <button id="payment-confirm-cancel" class="btn">취소</button>
+        <button id="payment-confirm-approve" class="btn primary">결제 요청 보내기</button>
+      </div>
+    </div>
+  </div>
 
 </div>
 <script type="module" src="js/main.js"></script>

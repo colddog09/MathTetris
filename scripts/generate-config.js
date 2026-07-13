@@ -13,3 +13,13 @@ const outPath = path.join(__dirname, "..", "js", "supabase-config.js");
 const content = `export const SUPABASE_URL = ${JSON.stringify(url)};\nexport const SUPABASE_ANON_KEY = ${JSON.stringify(anonKey)};\n`;
 fs.writeFileSync(outPath, content);
 console.log(`supabase-config.js generated at ${outPath}`);
+
+const entryCoinPrice = Number(process.env.ENTRY_COIN_PRICE || 500);
+if (!Number.isInteger(entryCoinPrice) || entryCoinPrice < 0) {
+  console.error("ENTRY_COIN_PRICE는 0 이상의 정수여야 합니다.");
+  process.exit(1);
+}
+const runtimePath = path.join(__dirname, "..", "js", "runtime-config.js");
+const allowTestNickname = process.env.ALLOW_TEST_NICKNAME === "true";
+fs.writeFileSync(runtimePath, `export const ENTRY_COIN_PRICE = ${entryCoinPrice};\nexport const ALLOW_TEST_NICKNAME = ${allowTestNickname};\n`);
+console.log(`runtime-config.js generated at ${runtimePath}`);

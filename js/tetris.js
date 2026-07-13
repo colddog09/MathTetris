@@ -4,6 +4,7 @@ import {
   T_SPIN_SCORE_MULTIPLIER, OTHER_SPIN_SCORE_MULTIPLIER,
   DANGER_TOP_ROWS, CLEAR_STEP_DELAY, CLEAR_FINAL_DELAY, PIECE_ANIMATION_SPEED,
   GAME_TIME_LIMIT, LOCK_DELAY, LOCK_RESET_LIMIT, TIME_SPEEDUP_MS_PER_SECOND,
+  COMBO_SCORE_STEP,
 } from "./constants.js";
 import { isPrime, createNumberBag, drawFromNumberBag } from "./numbers.js";
 
@@ -16,6 +17,7 @@ export class TetrisGame {
     this.settings = settings;
     this.maxNumber = maxNumber;
     this.sound = null;
+    this.onEvent = null;
     this.reset(performance.now() / 1000);
   }
 
@@ -28,6 +30,8 @@ export class TetrisGame {
     this.score = 0;
     this.lines = 0;
     this.discards = 0;
+    this.combo = 0;
+    this.maxCombo = 0;
     this.lastClear = 0;
     this.level = this.settings.starting_level;
 
@@ -58,6 +62,7 @@ export class TetrisGame {
     this.clearStepIndex = 0;
     this.clearRunningTotal = 0;
     this.clearTotalMultiplier = 1;
+    this.clearAllPrime = false;
     this.clearMultiplierLabel = "";
     this.clearStepDelay = CLEAR_STEP_DELAY;
     this.nextClearStepAt = 0;
@@ -80,6 +85,10 @@ export class TetrisGame {
 
   playSound(name) {
     if (this.sound) this.sound.play(name);
+  }
+
+  emitEvent(type, detail = {}) {
+    if (this.onEvent) this.onEvent(type, detail);
   }
 
   makePiece(kind) {
@@ -192,6 +201,8 @@ export class TetrisGame {
         this.lastMoveWasRotation = true;
         this.lastRotationKickIndex = kickIndex;
         this.resetLockDelay();
+        this.playSound("rotate");
+        this.emitEvent("rotate");
         return;
       }
     }
@@ -214,10 +225,14 @@ export class TetrisGame {
 
   hardDrop() {
     if (this.gameOver || this.clearingAnimation) return;
+    let distance = 0;
     while (this.move(0, 1)) {
+      distance += 1;
       // fall until blocked
     }
     this.lockStartedAt = 0;
+    this.playSound("drop");
+    this.emitEvent("hardDrop", { distance });
     this.lockPiece();
   }
 
@@ -242,16 +257,21 @@ export class TetrisGame {
       this.syncVisualToCurrent();
       if (!this.valid(pieceCells(this.current))) this.triggerGameOver(undefined, "topout");
     }
+    this.playSound("hold");
+    this.emitEvent("hold");
   }
 
   discardPiece() {
     if (this.gameOver || this.clearingAnimation) return;
+    this.combo = 0;
     this.discards += 1;
     const discardScore = this.isPrimePiece(this.current) ? DISCARD_PRIME_PENALTY : DISCARD_COMPOSITE_BONUS;
     this.score += discardScore;
     this.lastClear = discardScore;
     this.showScorePopup(discardScore, "TRASH");
     this.playSound("discard");
+    this.playSound(discardScore > 0 ? "good" : "bad");
+    this.emitEvent("discard", { value: discardScore });
     this.lastMoveWasRotation = false;
     this.lastRotationKickIndex = null;
     this.canHold = true;
@@ -279,6 +299,7 @@ export class TetrisGame {
       this.startClearAnimation(clearRows, spinMultiplier, spinLabel);
       return;
     }
+    this.combo = 0;
     this.spawnAfterLock();
   }
 
@@ -356,7 +377,11 @@ export class TetrisGame {
   startClearAnimation(clearRows, spinMultiplier = 1, spinLabel = "") {
     this.clearingAnimation = true;
     this.clearRows = [...clearRows].sort((a, b) => a - b);
+    this.clearAllPrime = this.clearRows.length > 0
+      && this.clearRows.every((y) => this.board[y].every((cell) => cell && cell.prime));
     this.clearSteps = [];
+    this.combo += 1;
+    this.maxCombo = Math.max(this.maxCombo, this.combo);
     const lineMultiplier = this.clearRows.length;
     const totalMultiplier = lineMultiplier * spinMultiplier;
     for (const y of this.clearRows) {
@@ -393,12 +418,24 @@ export class TetrisGame {
       this.playSound("count");
       this.nextClearStepAt = now + this.clearStepDelay;
       if (this.clearStepIndex === this.clearSteps.length) {
-        const finalTotal = this.clearRunningTotal * this.clearTotalMultiplier;
+        const comboBonus = Math.max(0, this.combo - 1) * COMBO_SCORE_STEP;
+        const finalTotal = this.clearRunningTotal * this.clearTotalMultiplier + comboBonus;
         this.clearRunningTotal = finalTotal;
         this.score += finalTotal;
         this.lastClear = finalTotal;
-        this.showScorePopup(finalTotal, this.clearMultiplierLabel);
+        const popupLabels = [this.clearMultiplierLabel];
+        if (comboBonus > 0) popupLabels.push(`COMBO x${this.combo}  +${comboBonus}`);
+        this.showScorePopup(finalTotal, popupLabels.filter(Boolean).join("  "));
         this.playSound("final");
+        this.playSound(finalTotal >= 0 ? "good" : "bad");
+        this.emitEvent("clearScore", {
+          value: finalTotal,
+          lines: this.clearRows.length,
+          multiplier: this.clearTotalMultiplier,
+          allPrime: this.clearAllPrime,
+          combo: this.combo,
+          comboBonus,
+        });
         this.clearFinishAt = now + CLEAR_FINAL_DELAY;
       }
       return;
@@ -412,6 +449,7 @@ export class TetrisGame {
     const kept = this.board.filter((_, y) => !this.clearRows.includes(y));
     this.board = Array.from({ length: cleared }, () => Array(COLS).fill(null)).concat(kept);
     this.lines += cleared;
+    this.emitEvent("lineClear", { lines: cleared });
     this.level = this.settings.starting_level + Math.floor(this.lines / 10);
     this.clearingAnimation = false;
     this.clearRows = [];
@@ -419,6 +457,7 @@ export class TetrisGame {
     this.clearStepIndex = 0;
     this.clearRunningTotal = 0;
     this.clearTotalMultiplier = 1;
+    this.clearAllPrime = false;
     this.clearMultiplierLabel = "";
     this.clearStepDelay = CLEAR_STEP_DELAY;
     this.clearFinishAt = 0;
@@ -450,7 +489,8 @@ export class TetrisGame {
     const timePressure = elapsed * TIME_SPEEDUP_MS_PER_SECOND;
     const linePressure = this.lines * 3;
     const delayMs = 1230 - timePressure - linePressure;
-    return Math.max(90, delayMs) / 1000;
+    const externalSpeedMultiplier = Math.max(1, this.externalSpeedMultiplier || 1);
+    return Math.max(35, Math.max(90, delayMs) / externalSpeedMultiplier) / 1000;
   }
 
   remainingTime(now) {
@@ -463,6 +503,7 @@ export class TetrisGame {
     this.gameOver = true;
     this.gameOverReason = reason;
     this.gameOverAt = now;
+    this.emitEvent("gameOver", { reason });
   }
 
   advanceGravity(now) {

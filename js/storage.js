@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS, SEED_SCOREBOARD } from "./constants.js";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.110.2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./supabase-config.js";
 
 const SETTINGS_KEY = "mathtetris_settings";
@@ -47,10 +47,16 @@ export async function loadScoreboard() {
   return [...SEED_SCOREBOARD, ...extra].sort((a, b) => b.best_score - a.best_score);
 }
 
-export async function appendScoreboardEntry(entry) {
-  const client = getSupabase();
-  if (client) {
-    await client.from("scoreboard").insert(entry);
+export async function appendScoreboardEntry(entry, gameToken) {
+  if (getSupabase()) {
+    const response = await fetch("/api/scoreboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entry, gameToken }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "스코어보드 저장에 실패했습니다.");
+    return data;
   } else {
     let extra = [];
     try {
@@ -60,5 +66,5 @@ export async function appendScoreboardEntry(entry) {
     extra.push(entry);
     localStorage.setItem(SCOREBOARD_FALLBACK_KEY, JSON.stringify(extra));
   }
-  return loadScoreboard();
+  return { scoreboard_id: entry.scoreboard_id };
 }

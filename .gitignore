@@ -1,0 +1,12 @@
+node_modules/
+.DS_Store
+.claude/
+.omc/
+.serena/
+.vercel/
+screenshots_design_web_full/
+js/supabase-config.js
+js/runtime-config.js
+.env
+.env.*
+!.env.example

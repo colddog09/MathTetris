@@ -9,24 +9,24 @@ export const WIDTH = SIDE * 2 + BOARD_W;
 export const HEIGHT = ROWS * CELL + TOP_PAD * 2;
 
 export const COLORS_BG = {
-  BG: "#f4f7fb",
-  GRID: "#c8d7e6",
+  BG: "#fdfcf8",
+  GRID: "#d8ceb8",
   PANEL: "#ffffff",
-  PLAY_BG: "#edf4fb",
+  PLAY_BG: "#f5f1e8",
   PLAY_PANEL: "#ffffff",
-  PLAY_LINE: "#1f2937",
-  PLAY_GRID: "#d9e4ef",
-  TEXT: "#1f2937",
-  MUTED: "#64748b",
-  ACCENT: "#2563eb",
-  ACCENT_DARK: "#1d4ed8",
-  SOFT_PANEL: "#f8fafc",
-  SOFT_LINE: "#dbe5f0",
-  GHOST: "#94a3b8",
-  BLOCK_FILL: "#ffffff",
-  BLOCK_EDGE: "#2563eb",
-  GOOD: "#22c55e",
-  BAD: "#ef4444",
+  PLAY_LINE: "#2a2620",
+  PLAY_GRID: "#d5decf",
+  TEXT: "#2a2620",
+  MUTED: "#7a7264",
+  ACCENT: "#2f6b4f",
+  ACCENT_DARK: "#24543e",
+  SOFT_PANEL: "#f7f3ea",
+  SOFT_LINE: "#d8ceb8",
+  GHOST: "#9b978d",
+  BLOCK_FILL: "#fdfcf8",
+  BLOCK_EDGE: "#2f6b4f",
+  GOOD: "#2f6b4f",
+  BAD: "#b85f3d",
 };
 
 export const PRIME_SCORE = 10;
@@ -63,10 +63,10 @@ export const KEY_ALIASES = {
 };
 export const REPEAT_KEYS = new Set(["left", "right", "down", "d", "s"]);
 
-export const COLORS = { I: "#45d6ad", O: "#d6c65a", T: "#c94ab8", S: "#86c64a", Z: "#d94f55", J: "#6957c9", L: "#d7834c" };
-export const COLOR_EDGES = { I: "#15936f", O: "#9e9137", T: "#8d267d", S: "#5a9130", Z: "#983037", J: "#42358f", L: "#9b5429" };
-export const COLOR_LIGHTS = { I: "#6ff0c7", O: "#eee27d", T: "#e36bd1", S: "#a7df66", Z: "#ef7076", J: "#8372e2", L: "#ee9a63" };
-export const COLOR_SHADOWS = { I: "#107457", O: "#786d28", T: "#6f1d62", S: "#437022", Z: "#77262c", J: "#33286f", L: "#793f1d" };
+export const COLORS = { I: "#4fa9a1", O: "#d2b84f", T: "#9d6cad", S: "#78a85a", Z: "#c85f5b", J: "#5f76b5", L: "#cf824c" };
+export const COLOR_EDGES = { I: "#2f7771", O: "#927d2e", T: "#6e477a", S: "#4f7739", Z: "#8d3e3b", J: "#3e5184", L: "#92562f" };
+export const COLOR_LIGHTS = { I: "#7cc9c2", O: "#ead77c", T: "#bf91ca", S: "#9bc67c", Z: "#e38a86", J: "#8799cd", L: "#e7a477" };
+export const COLOR_SHADOWS = { I: "#245e59", O: "#716024", T: "#56365f", S: "#3d5d2c", Z: "#6e302e", J: "#303f68", L: "#714224" };
 
 export const SHAPES = {
   I: { 0: [[-1, 0], [0, 0], [1, 0], [2, 0]], 1: [[1, -1], [1, 0], [1, 1], [1, 2]], 2: [[-1, 1], [0, 1], [1, 1], [2, 1]], 3: [[0, -1], [0, 0], [0, 1], [0, 2]] },
@@ -121,9 +121,34 @@ export const SFX_NOTES = {
   final: [[880, 0.07], [1175, 0.08], [1568, 0.12]],
   rotate: [[1280, 0.018], [1660, 0.018]],
   discard: [[360, 0.035], [220, 0.045]],
+  move: [[310, 0.016]],
+  hold: [[620, 0.035], [460, 0.045]],
+  drop: [[190, 0.035], [105, 0.07]],
+  good: [[760, 0.045], [1015, 0.06]],
+  bad: [[260, 0.055], [185, 0.07]],
+  warning: [[440, 0.06], [0, 0.03], [440, 0.06]],
+  tick: [[940, 0.035]],
+  tickFinal: [[1180, 0.055]],
+  tier: [[660, 0.055], [880, 0.055], [1100, 0.09]],
+  match: [[440, 0.06], [660, 0.06], [880, 0.1]],
+  coin: [[1040, 0.045], [1320, 0.06]],
+  ready: [[520, 0.07]],
+  start: [[780, 0.06], [1040, 0.12]],
+  lead: [[700, 0.045], [920, 0.07]],
+  behind: [[330, 0.055], [250, 0.07]],
+  win: [[523, 0.08], [659, 0.08], [784, 0.08], [1047, 0.2]],
+  lose: [[392, 0.09], [330, 0.09], [262, 0.18]],
+  itemGet: [[620, 0.04], [830, 0.04], [1110, 0.08]],
+  itemUse: [[880, 0.035], [440, 0.055], [1175, 0.07]],
+  ink: [[150, 0.05], [95, 0.09]],
+  speedAttack: [[520, 0.035], [780, 0.035], [1160, 0.055]],
+  reverseAttack: [[660, 0.04], [440, 0.04], [660, 0.06]],
 };
 
 export const DEFAULT_SETTINGS = { das_ms: 95, arr_ms: 18, soft_drop_ms: 8, starting_level: 1 };
+
+// 연속 줄 삭제의 두 번째 콤보부터 단계마다 추가되는 점수입니다.
+export const COMBO_SCORE_STEP = 100;
 
 export const SETTING_ROWS = [
   ["das_ms", "DAS", "hold delay", 50, 300, 10, "ms"],

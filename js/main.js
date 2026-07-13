@@ -62,6 +62,7 @@ const session = {
   opponentWagerPaid: false,
   wagerToken: "",
   wagerTrackingToken: "",
+  wagerPaymentAttemptId: "",
   opponentWagerToken: "",
   rewardHandled: false,
   rewardAmount: 0,
@@ -87,6 +88,7 @@ let game = null;
 let gameOverRects = [];
 let paymentPollTimer = null;
 let activeEntryTrackingToken = "";
+let entryPaymentAttemptId = "";
 let wagerPaymentPollTimer = null;
 let flowVersion = 0;
 const flowTimers = new Set();
@@ -521,11 +523,11 @@ function showCoinScreen(student) {
   el("coin-price-label").textContent = COIN_PRICE === 0 ? "테스트 참가비: 0코인" : `참가비: ${COIN_PRICE} 코인`;
   el("coin-status").textContent = COIN_PRICE === 0
     ? "테스트 모드에서는 실제 코인이 차감되지 않습니다."
-    : "결제 요청을 보내면 Naplace Coin 학생 지갑에서 승인해주세요.";
+    : "결제 내용을 확인하면 Naplace Coin에서 즉시 차감됩니다.";
   el("coin-error").textContent = "";
   const payBtn = el("coin-pay");
   payBtn.disabled = false;
-  payBtn.textContent = "결제 요청 보내기";
+  payBtn.textContent = `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
   session.screen = "coin";
   showScreen("screen-coin");
 }
@@ -534,6 +536,7 @@ async function initStudentScreen() {
   if (paymentPollTimer) clearInterval(paymentPollTimer);
   paymentPollTimer = null;
   activeEntryTrackingToken = "";
+  entryPaymentAttemptId = "";
   session.entryPaid = false;
   session.entryToken = "";
   session.screen = "student";
@@ -595,17 +598,19 @@ el("coin-pay").addEventListener("click", async () => {
     const confirmed = await confirmCoinPayment(session.studentId, COIN_PRICE);
     if (!confirmed) {
       payBtn.disabled = false;
-      payBtn.textContent = "결제 요청 보내기";
+      payBtn.textContent = `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
       el("coin-status").textContent = "결제가 취소되었습니다. 원할 때 다시 요청할 수 있습니다.";
       return;
     }
     payBtn.textContent = "처리 중...";
-    const request = await createPaymentRequest(session.studentId);
+    entryPaymentAttemptId ||= crypto.randomUUID();
+    const request = await createPaymentRequest(session.studentId, COIN_PRICE, "entry", "", entryPaymentAttemptId);
     if (request.status === "approved") {
       if (!request.game_token) throw new Error("승인 토큰을 받지 못했습니다.");
       session.entryPaid = true;
       session.entryToken = request.game_token;
-      el("coin-status").textContent = request.test ? "0코인 테스트 요청이 승인되었습니다." : "결제가 승인되었습니다.";
+      entryPaymentAttemptId = "";
+      el("coin-status").textContent = request.duplicate ? "이미 완료된 결제를 확인했습니다." : "결제가 즉시 완료되었습니다.";
       session.screen = "mode";
       showScreen("screen-mode");
       return;
@@ -635,6 +640,7 @@ el("coin-pay").addEventListener("click", async () => {
     paymentPollTimer = setInterval(() => check().catch(handleEntryPollWarning), PAYMENT_POLL_MS);
     await check().catch(handleEntryPollWarning);
   } catch (err) {
+    if (["payment_failed", "payment_conflict"].includes(err.code)) entryPaymentAttemptId = "";
     handleEntryPaymentError(err);
   }
 });
@@ -644,9 +650,9 @@ function handleEntryPaymentError(err) {
   paymentPollTimer = null;
   activeEntryTrackingToken = "";
   el("coin-error").textContent = err.message || "결제 실패";
-  el("coin-status").textContent = "승인 대기가 종료되었습니다. 아래 버튼으로 다시 요청할 수 있습니다.";
+  el("coin-status").textContent = "결제가 완료되지 않았습니다. 아래 버튼으로 다시 시도할 수 있습니다.";
   el("coin-pay").disabled = false;
-  el("coin-pay").textContent = "결제 요청 다시 보내기";
+  el("coin-pay").textContent = "바로 결제 다시 시도";
 }
 
 function handleEntryPollWarning(err) {
@@ -1027,6 +1033,7 @@ function prepareMultiplayerSession() {
   session.opponentWagerPaid = false;
   session.wagerToken = "";
   session.wagerTrackingToken = "";
+  session.wagerPaymentAttemptId = "";
   session.opponentWagerToken = "";
   session.rewardHandled = false;
   session.rewardAmount = 0;
@@ -1050,9 +1057,9 @@ function showWagerScreen() {
   el("wager-opponent-name").textContent = session.opponentName;
   el("wager-amount").disabled = session.wagerPaid;
   el("wager-submit").disabled = session.wagerPaid;
-  el("wager-status").textContent = session.wagerPaid ? "내 배팅 승인 완료" : "내 배팅 금액을 입력하세요.";
+  el("wager-status").textContent = session.wagerPaid ? "내 배팅 결제 완료" : "내 배팅 금액을 입력하세요.";
   el("wager-opponent-status").textContent = session.opponentWager
-    ? `상대 배팅: ${session.opponentWager}코인 · ${session.opponentWagerPaid ? "승인 완료" : "승인 대기"}`
+    ? `상대 배팅: ${session.opponentWager}코인 · ${session.opponentWagerPaid ? "결제 완료" : "결제 대기"}`
     : "상대 배팅 입력 대기 중";
   el("wager-error").textContent = "";
   session.screen = "wager";
@@ -1087,13 +1094,14 @@ el("wager-submit").addEventListener("click", async () => {
     }
     session.wagerAmount = amount;
     matchmaker.sendCommand("wager", { amount });
-    el("wager-status").textContent = "결제 요청 생성 중...";
-    const request = await createPaymentRequest(session.studentId, amount, "wager", matchmaker.roomId);
+    el("wager-status").textContent = "배팅 금액 즉시 결제 중...";
+    session.wagerPaymentAttemptId ||= crypto.randomUUID();
+    const request = await createPaymentRequest(session.studentId, amount, "wager", matchmaker.roomId, session.wagerPaymentAttemptId);
     session.wagerTrackingToken = request.tracking_token || "";
-    el("wager-status").textContent = `${amount}코인 승인 대기 중...`;
     const approveWager = (gameToken) => {
       if (!gameToken) throw new Error("배팅 승인 토큰을 받지 못했습니다.");
       session.wagerToken = gameToken;
+      session.wagerPaymentAttemptId = "";
       session.wagerTrackingToken = "";
       session.wagerPaid = true;
       if (session.screen !== "wager" || !matchmaker.connected()) return;
@@ -1106,6 +1114,7 @@ el("wager-submit").addEventListener("click", async () => {
       approveWager(request.game_token);
       return;
     }
+    el("wager-status").textContent = `${amount}코인 승인 대기 중...`;
     const handleWagerPollError = (error) => {
       const terminal = error.terminal || /토큰.*(만료|올바르지|서명)/.test(error.message || "");
       if (!terminal) {
@@ -1139,6 +1148,7 @@ el("wager-submit").addEventListener("click", async () => {
     wagerPaymentPollTimer = setInterval(() => poll().catch(handleWagerPollError), PAYMENT_POLL_MS);
     await poll().catch(handleWagerPollError);
   } catch (error) {
+    if (["payment_failed", "payment_conflict"].includes(error.code)) session.wagerPaymentAttemptId = "";
     el("wager-error").textContent = error.message || "배팅 요청에 실패했습니다.";
     el("wager-submit").disabled = false;
     el("wager-amount").disabled = false;
@@ -1891,6 +1901,7 @@ el("finished-restart").addEventListener("click", () => {
   session.entryToken = "";
   session.wagerToken = "";
   session.wagerTrackingToken = "";
+  session.wagerPaymentAttemptId = "";
   session.opponentWagerToken = "";
   remoteState = null;
   el("student-id").value = "";

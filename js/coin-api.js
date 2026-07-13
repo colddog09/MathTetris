@@ -6,7 +6,11 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || `코인 서버 오류 (${res.status})`);
+  if (!res.ok) {
+    const error = new Error(data.message || `코인 서버 오류 (${res.status})`);
+    error.code = data.code || "";
+    throw error;
+  }
   return data;
 }
 
@@ -16,10 +20,10 @@ export function getCoinStudent(studentId) {
   return api(`/api/coin/student?studentId=${encodeURIComponent(studentId)}`);
 }
 
-export function createPaymentRequest(studentId, amount = COIN_PRICE, purpose = "entry", roomId = "") {
+export function createPaymentRequest(studentId, amount = COIN_PRICE, purpose = "entry", roomId = "", paymentAttemptId = crypto.randomUUID()) {
   return api("/api/coin/payment-requests", {
     method: "POST",
-    body: JSON.stringify({ studentId, amount, purpose, roomId }),
+    body: JSON.stringify({ studentId, amount, purpose, roomId, paymentAttemptId }),
   });
 }
 

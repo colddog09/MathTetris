@@ -175,8 +175,8 @@ module.exports = async function handler(req, res) {
     const body = req.body || {};
     const rewardType = String(body.rewardType || "");
     const realRewards = process.env.ALLOW_REAL_REWARDS === "true";
-    if (realRewards && rewardType !== "single") {
-      return json(res, 503, { message: "멀티 정산은 서버 승패 검증이 추가될 때까지 실제 지급이 잠겨 있습니다." });
+    if (realRewards && rewardType === "disconnect_refund") {
+      return json(res, 503, { message: "시작 전 자동 환불은 중복 정산 방지를 위해 관리자 확인이 필요합니다." });
     }
     const settlement = rewardType === "single"
       ? await singleSettlement(body, realRewards)

@@ -532,10 +532,26 @@ function showCoinScreen(student) {
 
 async function initStudentScreen() {
   if (paymentPollTimer) clearInterval(paymentPollTimer);
+  paymentPollTimer = null;
+  activeEntryTrackingToken = "";
+  session.entryPaid = false;
+  session.entryToken = "";
   session.screen = "student";
   showScreen("screen-student");
   el("qr-scan-area").style.display = "none";
   el("manual-login-area").style.display = "block";
+}
+
+function hasCurrentEntryAccess() {
+  const testBypass = ALLOW_TEST_NICKNAME && session.studentName === "한교동";
+  return session.entryPaid && (Boolean(session.entryToken) || testBypass);
+}
+
+function requireCurrentEntryAccess() {
+  if (hasCurrentEntryAccess()) return true;
+  showCoinScreen({ student_id: session.studentId, name: session.studentName });
+  el("coin-error").textContent = "새 게임을 시작하려면 참가비 결제가 필요합니다.";
+  return false;
 }
 
 // Manual fallback
@@ -684,11 +700,13 @@ function beginSoloSetup() {
 
 el("mode-single").addEventListener("click", () => {
   clickSound();
+  if (!requireCurrentEntryAccess()) return;
   beginSoloSetup();
 });
 
 el("mode-multiplayer").addEventListener("click", () => {
   clickSound();
+  if (!requireCurrentEntryAccess()) return;
   clearFlowTimers();
   matchmaker.leaveRoom();
   prepareMultiplayerSession();
@@ -837,11 +855,10 @@ el("room-cancel").addEventListener("click", () => {
   showScreen("screen-mode");
 });
 
-el("mode-back").addEventListener("click", () => {
+el("mode-back").addEventListener("click", async () => {
   clickSound();
   clearFlowTimers();
-  session.screen = "student";
-  showScreen("screen-student");
+  await initStudentScreen();
 });
 
 // ---------- Screen: difficulty ----------
@@ -1870,6 +1887,7 @@ el("finished-restart").addEventListener("click", () => {
   session.currentScoreboardId = null;
   session.musicStoppedOnEnd = false;
   session.rewardHandled = false;
+  session.entryPaid = false;
   session.entryToken = "";
   session.wagerToken = "";
   session.wagerTrackingToken = "";
@@ -1877,8 +1895,7 @@ el("finished-restart").addEventListener("click", () => {
   remoteState = null;
   el("student-id").value = "";
   el("student-name").value = "";
-  session.screen = "student";
-  showScreen("screen-student");
+  initStudentScreen();
 });
 
 // ---------- Keyboard handling ----------

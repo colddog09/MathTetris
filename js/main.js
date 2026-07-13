@@ -1762,7 +1762,10 @@ async function finishSession() {
     playRecordCelebration();
   }
   await settleCoinResult();
-  el("result-coins").textContent = `${session.rewardAmount.toLocaleString()}코인`;
+  const resultCoins = el("result-coins");
+  resultCoins.textContent = `${session.rewardAmount.toLocaleString()}코인`;
+  restartFxClass(resultCoins, "coin-total-reveal", 1600);
+  if (session.rewardAmount > 0) sound.play("coin");
   el("result-reward-status").textContent = session.rewardStatusText;
   el("result-scoreboard").disabled = false;
 }

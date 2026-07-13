@@ -329,6 +329,38 @@ input:focus { border-color: var(--forest); }
 .result-summary-grid div { padding: 13px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 4px; }
 .result-summary-grid span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
 .result-summary-grid b { color: var(--ink); font-size: 16px; }
+#result-coins { display: inline-block; position: relative; }
+#result-coins.coin-total-reveal {
+  color: transparent;
+  background: linear-gradient(100deg, #8d5a00 8%, #f0b827 36%, #fff3a4 50%, #d78d00 65%, #8d5a00 92%);
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: coin-total-pop 1.6s cubic-bezier(.16,.84,.3,1), coin-total-shine 900ms linear 2;
+}
+#result-coins.coin-total-reveal::before,
+#result-coins.coin-total-reveal::after {
+  content: "✦";
+  position: absolute;
+  color: #e3a51b;
+  font-size: 12px;
+  text-shadow: 0 0 8px rgba(240,184,39,.7);
+  pointer-events: none;
+  animation: coin-total-spark 700ms ease-out 2;
+}
+#result-coins.coin-total-reveal::before { top: -11px; left: -16px; }
+#result-coins.coin-total-reveal::after { right: -17px; bottom: -9px; animation-delay: 180ms; }
+@keyframes coin-total-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(.78); }
+  20% { opacity: 1; transform: translateY(0) scale(1.18); }
+  42%, 100% { opacity: 1; transform: scale(1); }
+}
+@keyframes coin-total-shine { to { background-position: -220% 0; } }
+@keyframes coin-total-spark {
+  0% { opacity: 0; transform: scale(.2) rotate(0); }
+  35% { opacity: 1; transform: scale(1.2) rotate(35deg); }
+  100% { opacity: 0; transform: scale(.3) rotate(90deg); }
+}
 
 #screen-instructions .howto-card { width: 980px; padding: 0; overflow: hidden auto; text-align: left; }
 .howto-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding: 22px 28px 18px; background: linear-gradient(120deg, var(--forest-light), #f9f3e5 70%); border-bottom: 1.5px solid var(--line); }

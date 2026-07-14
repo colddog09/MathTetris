@@ -30,8 +30,8 @@ export const COLORS_BG = {
 };
 
 export const PRIME_SCORE = 10;
-export const COMPOSITE_SCORE = -20;
-export const DISCARD_PRIME_PENALTY = -30;
+export const COMPOSITE_SCORE = -25;
+export const DISCARD_PRIME_PENALTY = -100;
 export const DISCARD_COMPOSITE_BONUS = 30;
 export const SOFT_DROP_SLOWDOWN = 1.37;
 export const PRIME_CHANCE = 0.6;
@@ -164,11 +164,11 @@ export const SENSITIVITY_PRESETS = [
 ];
 
 export const DIFFICULTIES = [
-  ["easy", "쉬움", 50, "소수 기초 연습"],
-  ["normal", "보통", 100, "두 자리 수 판별"],
-  ["hard", "어려움", 150, "세 자리 초반 수"],
-  ["expert", "전문가", 200, "두세 자리 혼합"],
-  ["master", "마스터", 300, "최고 난이도"],
+  ["easy", "쉬움", 0, 50, "소수 기초 연습"],
+  ["normal", "보통", 0, 100, "두 자리 수 판별"],
+  ["hard", "어려움", 0, 200, "세 자리 초반 수"],
+  ["expert", "전문가", 100, 300, "두세 자리 혼합"],
+  ["master", "마스터", 200, 600, "최고 난이도"],
 ];
 
 export const SEED_SCOREBOARD = [];

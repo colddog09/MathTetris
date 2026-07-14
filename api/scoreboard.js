@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
     const runs = Number(entry.runs);
     const maxNumber = Number(entry.max_number);
     if (!name || !difficulty || !Number.isInteger(score) || Math.abs(score) > 250000) return json(res, 400, { message: "스코어보드 기록이 올바르지 않습니다." });
-    if (String(entry.student_id) !== token.studentId || runs !== 1 || ![50, 100, 150, 200, 300].includes(maxNumber)) return json(res, 400, { message: "플레이 정보가 결제 토큰과 일치하지 않습니다." });
+    if (String(entry.student_id) !== token.studentId || runs !== 1 || ![50, 100, 200, 300, 600].includes(maxNumber)) return json(res, 400, { message: "플레이 정보가 결제 토큰과 일치하지 않습니다." });
 
     const topResponse = await supabaseAdminFetch("/rest/v1/scoreboard?select=best_score&order=best_score.desc&limit=1");
     const topRows = await topResponse.json().catch(() => []);

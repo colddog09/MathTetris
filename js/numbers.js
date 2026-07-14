@@ -13,15 +13,16 @@ export function isPrime(number) {
 
 const poolCache = new Map();
 
-function numberPools(maxNumber) {
-  if (poolCache.has(maxNumber)) return poolCache.get(maxNumber);
+function numberPools(minNumber, maxNumber) {
+  const cacheKey = `${minNumber}-${maxNumber}`;
+  if (poolCache.has(cacheKey)) return poolCache.get(cacheKey);
   const primes = [];
   const composites = [];
-  for (let number = 2; number <= maxNumber; number++) {
+  for (let number = Math.max(2, minNumber); number <= maxNumber; number++) {
     (isPrime(number) ? primes : composites).push(number);
   }
   const pools = { primes, composites };
-  poolCache.set(maxNumber, pools);
+  poolCache.set(cacheKey, pools);
   return pools;
 }
 
@@ -43,8 +44,8 @@ function weightedCompositeChoice(composites) {
   return composites[composites.length - 1];
 }
 
-export function randomTileNumber(maxNumber) {
-  const { primes, composites } = numberPools(maxNumber);
+export function randomTileNumber(minNumber, maxNumber) {
+  const { primes, composites } = numberPools(minNumber, maxNumber);
   if (primes.length && (!composites.length || Math.random() < PRIME_CHANCE)) {
     return primes[Math.floor(Math.random() * primes.length)];
   }
@@ -60,8 +61,8 @@ function shuffleArray(arr) {
   return a;
 }
 
-export function createNumberBag(maxNumber) {
-  const { primes, composites } = numberPools(maxNumber);
+export function createNumberBag(minNumber, maxNumber) {
+  const { primes, composites } = numberPools(minNumber, maxNumber);
   return {
     primes: shuffleArray(primes),
     composites: shuffleArray(composites),

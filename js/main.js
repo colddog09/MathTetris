@@ -931,10 +931,10 @@ function renderDifficultyScreen() {
   const list = el("difficulty-list");
   list.innerHTML = "";
   DIFFICULTIES.forEach((diff, index) => {
-    const [, label, maxNumber, desc] = diff;
+    const [, label, minNumber, maxNumber, desc] = diff;
     const row = document.createElement("div");
     row.className = "difficulty-row" + (session.pendingDifficultyIndex === index ? " selected" : "");
-    row.innerHTML = `<span class="d-label">${index + 1}. ${label}</span><span class="d-range">0~${maxNumber}</span><span class="d-desc">${desc}</span>`;
+    row.innerHTML = `<span class="d-label">${index + 1}. ${label}</span><span class="d-range">${minNumber}~${maxNumber}</span><span class="d-desc">${desc}</span>`;
     row.addEventListener("click", () => previewDifficulty(index));
     list.appendChild(row);
   });
@@ -986,10 +986,10 @@ function showInstructions() {
 }
 
 function showReadyScreen() {
-  const [, label, maxNumber] = DIFFICULTIES[session.difficultyIndex];
+  const [, label, minNumber, maxNumber] = DIFFICULTIES[session.difficultyIndex];
   el("ready-my-name").textContent = session.studentName;
   el("ready-opponent-name").textContent = session.opponentName || "상대방";
-  el("ready-difficulty-label").textContent = `난이도: ${label} (0~${maxNumber})`;
+  el("ready-difficulty-label").textContent = `난이도: ${label} (${minNumber}~${maxNumber})`;
   el("ready-btn").disabled = false;
   el("ready-btn").textContent = "준비 완료";
   el("ready-status").textContent = "준비 완료를 눌러 게임을 시작하세요.";
@@ -1015,8 +1015,8 @@ el("difficulty-confirm").addEventListener("click", () => {
 function finalizeDifficulty(index) {
   session.difficultyIndex = index;
   session.difficultyResolved = true;
-  const [, label, maxNumber] = DIFFICULTIES[index];
-  el("instructions-subtitle").textContent = `${session.studentName} / ${session.totalRuns}회 플레이 / ${label} 1~${maxNumber}`;
+  const [, label, minNumber, maxNumber] = DIFFICULTIES[index];
+  el("instructions-subtitle").textContent = `${session.studentName} / ${session.totalRuns}회 플레이 / ${label} ${minNumber}~${maxNumber}`;
   renderRewardGuide(index);
   if (session.mode === "multi") showReadyScreen();
   else showInstructions();
@@ -1751,8 +1751,8 @@ function startNextRun() {
   session.matchDetail = "";
   session.musicStoppedOnEnd = false;
   session.recordSaved = false;
-  const maxNumber = DIFFICULTIES[session.difficultyIndex][2];
-  game = new TetrisGame(session.settings, maxNumber);
+  const [, , minNumber, maxNumber] = DIFFICULTIES[session.difficultyIndex];
+  game = new TetrisGame(session.settings, minNumber, maxNumber);
   game.sound = sound;
   game.onEvent = handleGameEvent;
   lastCountdownSecond = null;
@@ -1816,7 +1816,7 @@ async function finishSession() {
   session.personalBest = false;
 
   if (!session.recordSaved && !rankingExcluded) {
-    const [, label, maxNumber] = DIFFICULTIES[session.difficultyIndex];
+    const [, label, , maxNumber] = DIFFICULTIES[session.difficultyIndex];
     const now = new Date();
     const pad = (n) => String(n).padStart(2, "0");
     const playedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
@@ -2303,7 +2303,8 @@ function frame() {
       runNumber: session.runNumber,
       totalRuns: session.totalRuns,
       difficultyLabel: DIFFICULTIES[session.difficultyIndex][1],
-      maxNumber: DIFFICULTIES[session.difficultyIndex][2],
+      minNumber: DIFFICULTIES[session.difficultyIndex][2],
+      maxNumber: DIFFICULTIES[session.difficultyIndex][3],
       bestSessionScore: session.bestSessionScore,
       settingsOpen: session.settingsOpen,
       settingsIndex: session.settingsIndex,

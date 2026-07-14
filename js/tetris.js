@@ -13,8 +13,9 @@ function pieceCells(piece, x = piece.x, y = piece.y, rotation = piece.rotation) 
 }
 
 export class TetrisGame {
-  constructor(settings, maxNumber) {
+  constructor(settings, minNumber, maxNumber) {
     this.settings = settings;
+    this.minNumber = minNumber;
     this.maxNumber = maxNumber;
     this.sound = null;
     this.onEvent = null;
@@ -68,7 +69,7 @@ export class TetrisGame {
     this.nextClearStepAt = 0;
     this.clearFinishAt = 0;
 
-    this.numberBag = createNumberBag(this.maxNumber);
+    this.numberBag = createNumberBag(this.minNumber, this.maxNumber);
 
     this.rotateEffectCells = [];
     this.rotateEffectUntil = 0;

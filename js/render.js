@@ -293,7 +293,7 @@ function drawPanel(ctx, game, uiInfo) {
   const speed = `${Math.round(game.gravityDelay() * 1000)}ms`;
   const rows = [
     ["COMBO", game.combo > 0 ? `x${game.combo}` : "-"],
-    ["MODE", `${uiInfo.difficultyLabel} 0~${uiInfo.maxNumber}`],
+    ["MODE", `${uiInfo.difficultyLabel} ${uiInfo.minNumber}~${uiInfo.maxNumber}`],
     ["BEST", best],
     ["LEVEL", game.level],
     ["SPEED", speed],

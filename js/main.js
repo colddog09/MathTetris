@@ -951,8 +951,8 @@ function renderDifficultyScreen() {
   el("difficulty-confirm").disabled = session.pendingDifficultyIndex === null || session.myDifficultyVote !== null;
   el("difficulty-confirm").textContent = session.mode === "multi" ? "이 난이도에 투표" : "이 난이도로 확정";
   const list = el("difficulty-list");
-  list.innerHTML = "";
   const hadFocus = list.contains(document.activeElement);
+  list.innerHTML = "";
   DIFFICULTIES.forEach((diff, index) => {
     const [, label, minNumber, maxNumber, desc] = diff;
     const row = document.createElement("button");

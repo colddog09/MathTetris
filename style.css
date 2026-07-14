@@ -1,5 +1,4 @@
 :root {
-  --beta-notice-height: 40px;
   --paper: #fdfcf8;
   --paper-card: #ffffff;
   --ink: #2a2620;
@@ -54,30 +53,10 @@ select:focus-visible {
   overflow: hidden;
 }
 
-.beta-notice {
-  display: flex;
-  position: fixed;
-  inset: 0 0 auto;
-  z-index: 105;
-  height: var(--beta-notice-height);
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 7px 18px;
-  color: #fffaf0;
-  background: linear-gradient(90deg, var(--forest-dark), var(--forest));
-  border-bottom: 2px solid #f3c896;
-  box-shadow: 0 3px 14px rgba(28, 61, 44, .2);
-  font-size: 12px;
-  text-align: center;
-}
-.beta-notice b { flex: none; padding: 3px 7px; color: var(--forest-dark); background: #f3c896; border-radius: 3px; font-size: 9px; letter-spacing: .12em; }
-.beta-notice span { font-weight: 750; }
-
 .screen {
   display: none;
   position: absolute;
-  inset: var(--beta-notice-height) 0 0;
+  inset: 0;
 }
 
 .screen.active {
@@ -882,9 +861,6 @@ tr.score-row.is-player { color: var(--forest-dark); background: var(--forest-lig
 }
 
 @media (max-width: 640px) {
-  :root { --beta-notice-height: 58px; }
-  .beta-notice { align-items: flex-start; gap: 7px; padding: 8px 12px; font-size: 10px; line-height: 1.35; }
-  .beta-notice b { margin-top: 1px; }
   .card-screen { padding: 14px; }
   .card { padding: 22px 20px; }
   .card.wide { width: 100%; }

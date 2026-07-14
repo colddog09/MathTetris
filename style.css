@@ -322,6 +322,8 @@ input:focus { border-color: var(--forest); }
 .difficulty-rewards span { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; background: var(--forest-light); border-radius: 3px; font-size: 13px; }
 .difficulty-rewards em { color: var(--muted); font-style: normal; }
 .difficulty-rewards strong { color: var(--forest-dark); font-size: 14px; }
+.difficulty-rewards span.reward-top1 { background: #fff2cc; }
+.difficulty-rewards span.reward-top1 strong { color: #a5660a; }
 
 .difficulty-wheel { display: grid; place-items: center; width: 210px; height: 210px; margin: 22px auto; background: conic-gradient(var(--forest) 0 50%, var(--terracotta) 50% 100%); border: 8px solid var(--paper-card); border-radius: 50%; box-shadow: 0 0 0 3px var(--line), 0 10px 25px var(--paper-shadow); }
 .difficulty-wheel::before { content: "▼"; position: absolute; margin-top: -238px; color: var(--ink); font-size: 26px; z-index: 2; }

@@ -5,7 +5,7 @@ import { SoundManager } from "./sound.js";
 import { loadSettings, saveSettings, loadScoreboard, appendScoreboardEntry } from "./storage.js";
 import { Matchmaker, isSupabaseConfigured } from "./multiplayer.js";
 import { cancelPaymentRequest, createPaymentRequest, getCoinStudent, getPaymentStatus, requestReward, COIN_PRICE, PAYMENT_POLL_MS } from "./coin-api.js";
-import { ALLOW_TEST_NICKNAME, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
+import { ALLOW_TEST_NICKNAME, LEADERBOARD_FIRST_BONUS, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
 
 const sound = new SoundManager();
 const pressedKeys = new Set();
@@ -952,10 +952,12 @@ function renderDifficultyDetail(index) {
 }
 
 function renderDifficultyRewardTable() {
-  el("difficulty-reward-list").innerHTML = rewardTiersForDifficulty()
+  const tierRows = rewardTiersForDifficulty()
     .slice().reverse()
     .map(({ minScore, coins }) => `<span><em>${minScore.toLocaleString()}점</em><strong>${coins.toLocaleString()}코인</strong></span>`)
     .join("");
+  const topRow = `<span class="reward-top1"><em>전체 1등</em><strong>+${LEADERBOARD_FIRST_BONUS.toLocaleString()}코인</strong></span>`;
+  el("difficulty-reward-list").innerHTML = tierRows + topRow;
 }
 
 function previewDifficulty(index) {

@@ -2,7 +2,7 @@ const { json } = require("./_http");
 const { enforceJsonRequest, enforceRateLimit, enforceSameOrigin, safeString, verifyPayload } = require("./_security");
 const { supabaseAdminFetch } = require("./_supabase-admin");
 
-const LEADERBOARD_FIRST_BONUS = 3000;
+const LEADERBOARD_FIRST_BONUS = 2000;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return json(res, 405, { message: "POST만 지원합니다." });

@@ -6,7 +6,7 @@ export { ALLOW_TEST_NICKNAME };
 export const PAYMENT_POLL_MS = 1500;
 export const LEADERBOARD_FIRST_BONUS = 2000;
 
-export const DIFFICULTY_SCORE_MULTIPLIERS = [0.5, 0.8, 1, 1.25, 1.5];
+export const DIFFICULTY_SCORE_MULTIPLIERS = [0.5, 0.75, 1, 1.4, 2];
 
 export const SINGLE_REWARD_TIERS = [
   { minScore: 10000, coins: 1500 },

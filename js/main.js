@@ -1879,7 +1879,7 @@ async function finishSession() {
         played_at: playedAt,
       }, session.entryToken);
       session.currentScoreboardId = saved.scoreboard_id || null;
-      session.leaderboardBonus = Number(saved.leaderboard_bonus) === 3000 ? 3000 : 0;
+      session.leaderboardBonus = Number(saved.leaderboard_bonus) || 0;
     } catch (error) {
       session.currentScoreboardId = null;
       el("result-detail").textContent += ` · 랭킹 저장 실패: ${error.message}`;

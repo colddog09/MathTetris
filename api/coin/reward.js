@@ -5,8 +5,8 @@ const { supabaseAdminFetch } = require("../_supabase-admin");
 
 const mockCompleted = new Map();
 const SINGLE_REWARD_TIERS = [
-  { minScore: 10000, coins: 2000 },
-  { minScore: 8500, coins: 1500 },
+  { minScore: 10000, coins: 1500 },
+  { minScore: 8500, coins: 1250 },
   { minScore: 7000, coins: 1000 },
   { minScore: 5500, coins: 750 },
   { minScore: 4000, coins: 500 },
@@ -38,7 +38,7 @@ async function singleSettlement(body, realRewards) {
     const row = rows[0];
     if (!row || String(row.student_id) !== player.studentId) throw new Error("정산할 스코어보드 기록을 찾지 못했습니다.");
     finalScore = Number(row.best_score);
-    leaderboardBonus = Number(row.leaderboard_bonus) === 3000 ? 3000 : 0;
+    leaderboardBonus = Number(row.leaderboard_bonus) || 0;
   } else {
     finalScore = Number(body.finalScore);
   }

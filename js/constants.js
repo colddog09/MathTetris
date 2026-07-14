@@ -145,22 +145,22 @@ export const SFX_NOTES = {
   reverseAttack: [[660, 0.04], [440, 0.04], [660, 0.06]],
 };
 
-export const DEFAULT_SETTINGS = { das_ms: 95, arr_ms: 18, soft_drop_ms: 8, starting_level: 1 };
+export const DEFAULT_SETTINGS = { das_ms: 20, arr_ms: 5, soft_drop_ms: 8, starting_level: 1 };
 
 // 연속 줄 삭제의 두 번째 콤보부터 단계마다 추가되는 점수입니다.
 export const COMBO_SCORE_STEP = 100;
 
 export const SETTING_ROWS = [
-  ["das_ms", "DAS", "hold delay", 50, 300, 10, "ms"],
-  ["arr_ms", "ARR", "side repeat", 10, 120, 5, "ms"],
+  ["das_ms", "DAS", "hold delay", 1, 20, 1, "ms"],
+  ["arr_ms", "ARR", "side repeat", 0, 5, 1, "ms"],
   ["soft_drop_ms", "SOFT", "down repeat", 5, 120, 1, "ms"],
   ["starting_level", "START", "level", 1, 15, 1, ""],
 ];
 
 export const SENSITIVITY_PRESETS = [
-  ["안정형", { das_ms: 135, arr_ms: 32, soft_drop_ms: 22 }, "천천히 정확하게"],
-  ["표준형", { das_ms: 95, arr_ms: 18, soft_drop_ms: 10 }, "기본 추천"],
-  ["빠른형", { das_ms: 65, arr_ms: 10, soft_drop_ms: 6 }, "빠른 이동"],
+  ["안정형", { das_ms: 16, arr_ms: 4, soft_drop_ms: 22 }, "천천히 정확하게"],
+  ["표준형", { das_ms: 10, arr_ms: 2, soft_drop_ms: 10 }, "기본 추천"],
+  ["빠른형", { das_ms: 5, arr_ms: 1, soft_drop_ms: 6 }, "빠른 이동"],
 ];
 
 export const DIFFICULTIES = [

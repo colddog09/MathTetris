@@ -207,9 +207,41 @@ function renderRewardGuide(difficultyIndex) {
     .join("");
 }
 
+const MENU_SCREENS = new Set([
+  "student", "coin", "mode", "difficulty", "wheel", "instructions",
+  "matching", "room", "ready", "wager", "finished", "result",
+]);
+
+function getFocusableMenuItems(root) {
+  return Array.from(root.querySelectorAll("button, input, [tabindex]"))
+    .filter((elm) => !elm.disabled && elm.tabIndex !== -1 && elm.offsetParent !== null);
+}
+
+function focusFirstMenuItem(id) {
+  const screenEl = el(id);
+  if (!screenEl || !screenEl.classList.contains("active")) return;
+  if (screenEl.contains(document.activeElement)) return;
+  const items = getFocusableMenuItems(screenEl);
+  if (!items.length) return;
+  const preferred = screenEl.querySelector("input") || screenEl.querySelector(".btn.primary, button.primary");
+  const target = preferred && items.includes(preferred) ? preferred : items[0];
+  target.focus();
+}
+
+function moveMenuFocus(dir) {
+  const screenEl = document.querySelector(".screen.active");
+  if (!screenEl) return;
+  const items = getFocusableMenuItems(screenEl);
+  if (!items.length) return;
+  let idx = items.indexOf(document.activeElement);
+  idx = idx === -1 ? 0 : (idx + dir + items.length) % items.length;
+  items[idx].focus();
+}
+
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   el(id).classList.add("active");
+  if (id !== "screen-playing") setTimeout(() => focusFirstMenuItem(id), 0);
 }
 
 function unlockAudioOnce() {
@@ -930,13 +962,16 @@ function renderDifficultyScreen() {
   el("difficulty-confirm").textContent = session.mode === "multi" ? "이 난이도에 투표" : "이 난이도로 확정";
   const list = el("difficulty-list");
   list.innerHTML = "";
+  const hadFocus = list.contains(document.activeElement);
   DIFFICULTIES.forEach((diff, index) => {
     const [, label, minNumber, maxNumber, desc] = diff;
-    const row = document.createElement("div");
+    const row = document.createElement("button");
+    row.type = "button";
     row.className = "difficulty-row" + (session.pendingDifficultyIndex === index ? " selected" : "");
     row.innerHTML = `<span class="d-label">${index + 1}. ${label}</span><span class="d-range">${minNumber}~${maxNumber}</span><span class="d-desc">${desc}</span>`;
     row.addEventListener("click", () => previewDifficulty(index));
     list.appendChild(row);
+    if (hadFocus && session.pendingDifficultyIndex === index) row.focus();
   });
   if (session.pendingDifficultyIndex === null) {
     el("difficulty-score-multiplier").textContent = "×—";
@@ -2124,14 +2159,17 @@ function handleSettingsKey(key) {
 
 window.addEventListener("keydown", (event) => {
   let key = normalizeKey(event);
+  if (MENU_SCREENS.has(session.screen) && ["up", "down", "left", "right"].includes(key) && document.activeElement?.tagName !== "INPUT") {
+    event.preventDefault();
+    moveMenuFocus(key === "up" || key === "left" ? -1 : 1);
+    return;
+  }
   if (session.screen === "mode") {
-    if (key === "return") el("mode-single").click();
-    else if (key === "escape") el("mode-back").click();
+    if (key === "escape") el("mode-back").click();
     return;
   }
   if (session.screen === "difficulty") {
     if (["1", "2", "3", "4", "5"].includes(key)) previewDifficulty(parseInt(key, 10) - 1);
-    else if (key === "return" && session.pendingDifficultyIndex !== null) el("difficulty-confirm").click();
     else if (key === "escape") el("difficulty-back").click();
     return;
   }
@@ -2147,25 +2185,35 @@ window.addEventListener("keydown", (event) => {
     if (key === "escape") el("wager-cancel").click();
     return;
   }
+  if (session.screen === "ready") {
+    if (key === "escape") el("ready-cancel").click();
+    return;
+  }
+  if (session.screen === "coin") {
+    if (key === "escape") el("coin-back").click();
+    return;
+  }
   if (session.screen === "instructions") {
-    if (key === "return") startNextRun();
-    else if (key === "s") { session.screen = "sensitivity"; renderSensitivityScreen(); showScreen("screen-sensitivity"); }
+    if (key === "s") { session.screen = "sensitivity"; renderSensitivityScreen(); showScreen("screen-sensitivity"); }
     else if (key === "escape") { session.screen = "difficulty"; showScreen("screen-difficulty"); }
     return;
   }
   if (session.screen === "sensitivity") {
-    if (REPEAT_KEYS.has(key)) { pressedKeys.add(key); event.preventDefault(); return; }
-    if (key === "return" || key === "space") { pressedKeys.clear(); startNextRun(); }
+    const screenEl = el("screen-sensitivity");
+    const focusedButton = document.activeElement?.tagName === "BUTTON" && screenEl.contains(document.activeElement)
+      ? document.activeElement
+      : null;
+    if (REPEAT_KEYS.has(key) && !focusedButton) { pressedKeys.add(key); event.preventDefault(); return; }
+    if ((key === "return" || key === "space") && !focusedButton) { pressedKeys.clear(); startNextRun(); }
     else if (key === "escape") { pressedKeys.clear(); showInstructions(); }
-    else if (key === "r") { resetSensitivityTest(); }
+    else if (key === "r" && !focusedButton) { resetSensitivityTest(); }
     return;
   }
   if (session.screen === "finished") {
-    if (key === "return" || key === "r") el("finished-restart").click();
+    if (key === "r") el("finished-restart").click();
     return;
   }
   if (session.screen === "result") {
-    if (key === "return" && !el("result-scoreboard").disabled) el("result-scoreboard").click();
     return;
   }
   if (session.screen !== "playing" || !game) return;

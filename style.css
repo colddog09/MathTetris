@@ -41,6 +41,12 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
+.screen button:focus,
+.screen input:focus {
+  outline: 3px solid rgba(47, 107, 79, 0.45);
+  outline-offset: 2px;
+}
+
 #app {
   position: relative;
   width: 100vw;
@@ -298,6 +304,7 @@ input:focus { border-color: var(--forest); }
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   margin-bottom: 9px;
   padding: 11px 13px;
   background: var(--paper);
@@ -305,6 +312,8 @@ input:focus { border-color: var(--forest); }
   border-left: 4px solid var(--forest);
   border-radius: 4px;
   cursor: pointer;
+  font: inherit;
+  text-align: left;
   transition: background-color 120ms ease, transform 120ms ease;
 }
 

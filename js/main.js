@@ -40,6 +40,8 @@ const session = {
   difficultyIndex: 1,
   bestSessionScore: null,
   currentScoreboardId: null,
+  scoreboardPage: 0,
+  personalBest: false,
   recordSaved: false,
   settings: loadSettings(),
   settingsOpen: false,
@@ -579,12 +581,14 @@ async function initStudentScreen() {
 
 async function loadTopScoreForStudentScreen() {
   const top1El = el("student-top1");
+  top1El.style.display = "none";
   top1El.textContent = "";
   try {
-    const scoreboard = (await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name));
+    const scoreboard = dedupeScoreboardBest((await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name)));
     if (scoreboard.length > 0) {
       const top = scoreboard[0];
-      top1El.textContent = `현재 1등: ${top.name} (${Number(top.best_score).toLocaleString()}점)`;
+      top1El.textContent = `🏆 현재 1등: ${top.name} (${Number(top.best_score).toLocaleString()}점)`;
+      top1El.style.display = "block";
     }
   } catch (error) {
     // scoreboard unavailable, leave blank
@@ -1782,6 +1786,7 @@ function recordRunScore() {
 async function finishSession() {
   if (session.finishing) return;
   session.finishing = true;
+  session.entryPaid = false;
   sound.stopMusic();
   if (game && !game.runRecorded) recordRunScore();
   if (session.bestSessionScore === null && game) session.bestSessionScore = game.score;
@@ -1808,6 +1813,7 @@ async function finishSession() {
 
   const rankingExcluded = isRankingExcludedName(session.studentName);
   session.leaderboardBonus = 0;
+  session.personalBest = false;
 
   if (!session.recordSaved && !rankingExcluded) {
     const [, label, maxNumber] = DIFFICULTIES[session.difficultyIndex];
@@ -1815,6 +1821,11 @@ async function finishSession() {
     const pad = (n) => String(n).padStart(2, "0");
     const playedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     try {
+      const priorBoard = await loadScoreboard().catch(() => []);
+      const priorBest = priorBoard
+        .filter((row) => row.student_id === session.studentId)
+        .reduce((max, row) => Math.max(max, Number(row.best_score) || 0), -Infinity);
+      session.personalBest = session.finalScore > priorBest;
       const saved = await appendScoreboardEntry({
         student_id: session.studentId,
         name: session.studentName,
@@ -1838,6 +1849,9 @@ async function finishSession() {
   }
   if (session.leaderboardBonus > 0) {
     el("result-detail").textContent += ` · NEW 1위! 추가 ${session.leaderboardBonus.toLocaleString()}코인`;
+    playRecordCelebration();
+  } else if (session.personalBest) {
+    el("result-detail").textContent += " · NEW RECORD! 개인 최고 기록 경신";
     playRecordCelebration();
   }
   await settleCoinResult();
@@ -1924,21 +1938,50 @@ el("difficulty-scoreboard").addEventListener("click", async () => {
   await showFinishedScreen();
 });
 
+el("student-top1").addEventListener("click", async () => {
+  clickSound();
+  session.scoreboardOrigin = "student";
+  session.screen = "finished";
+  showScreen("screen-finished");
+  el("finished-restart").textContent = "돌아가기";
+  el("finished-reward").textContent = "";
+  el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
+  await showFinishedScreen();
+});
+
+const SCOREBOARD_PAGE_SIZE = 10;
+let scoreboardRows = [];
+
+function dedupeScoreboardBest(rows) {
+  const bestByStudent = new Map();
+  for (const row of rows) {
+    const existing = bestByStudent.get(row.student_id);
+    if (!existing || Number(row.best_score) > Number(existing.best_score)) bestByStudent.set(row.student_id, row);
+  }
+  return [...bestByStudent.values()].sort((a, b) => b.best_score - a.best_score);
+}
+
 async function showFinishedScreen() {
-  el("finished-subtitle").textContent = session.scoreboardOrigin === "difficulty"
-    ? "전체 스코어보드"
-    : `${session.studentName} 최종 점수: ${session.finalScore.toLocaleString()}`;
-  const scoreboard = (await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name));
+  el("finished-subtitle").textContent = session.scoreboardOrigin === "result"
+    ? `${session.studentName} 최종 점수: ${session.finalScore.toLocaleString()}`
+    : "전체 스코어보드";
+  const rawScoreboard = (await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name));
+  scoreboardRows = dedupeScoreboardBest(rawScoreboard);
+  const currentIndex = scoreboardRows.findIndex((row) => row.student_id === session.studentId);
+  session.scoreboardPage = currentIndex >= 0 ? Math.floor(currentIndex / SCOREBOARD_PAGE_SIZE) : 0;
+  renderScoreboardPage();
+}
+
+function renderScoreboardPage() {
   const body = el("scoreboard-body");
   body.innerHTML = "";
-  const currentIndex = scoreboard.findIndex((row) => row.scoreboard_id && row.scoreboard_id === session.currentScoreboardId);
-  let visibleRows = scoreboard.slice(0, 10).map((row, index) => ({ row, rank: index + 1 }));
-  if (currentIndex >= 10) {
-    visibleRows = scoreboard.slice(0, 9).map((row, index) => ({ row, rank: index + 1 }));
-    visibleRows.push({ row: scoreboard[currentIndex], rank: currentIndex + 1 });
-  }
-  visibleRows.forEach(({ row, rank }, index) => {
-    const isPlayer = row.scoreboard_id && row.scoreboard_id === session.currentScoreboardId;
+  const totalPages = Math.max(1, Math.ceil(scoreboardRows.length / SCOREBOARD_PAGE_SIZE));
+  session.scoreboardPage = Math.min(Math.max(session.scoreboardPage, 0), totalPages - 1);
+  const start = session.scoreboardPage * SCOREBOARD_PAGE_SIZE;
+  const pageRows = scoreboardRows.slice(start, start + SCOREBOARD_PAGE_SIZE);
+  pageRows.forEach((row, index) => {
+    const rank = start + index + 1;
+    const isPlayer = row.student_id === session.studentId;
     const tr = document.createElement("tr");
     tr.className = "score-row" + (isPlayer ? " is-player" : "");
     [rank, row.student_id, row.name, row.best_score, row.difficulty].forEach((value) => {
@@ -1949,7 +1992,22 @@ async function showFinishedScreen() {
     body.appendChild(tr);
     setTimeout(() => tr.classList.add("shown"), 60 + index * 90);
   });
+  el("scoreboard-page-label").textContent = `${session.scoreboardPage + 1} / ${totalPages}`;
+  el("scoreboard-prev").disabled = session.scoreboardPage === 0;
+  el("scoreboard-next").disabled = session.scoreboardPage >= totalPages - 1;
 }
+
+el("scoreboard-prev").addEventListener("click", () => {
+  clickSound();
+  session.scoreboardPage -= 1;
+  renderScoreboardPage();
+});
+
+el("scoreboard-next").addEventListener("click", () => {
+  clickSound();
+  session.scoreboardPage += 1;
+  renderScoreboardPage();
+});
 
 el("finished-restart").addEventListener("click", () => {
   clickSound();
@@ -1957,6 +2015,11 @@ el("finished-restart").addEventListener("click", () => {
     session.scoreboardOrigin = null;
     session.screen = "difficulty";
     showScreen("screen-difficulty");
+    return;
+  }
+  if (session.scoreboardOrigin === "student") {
+    session.scoreboardOrigin = null;
+    initStudentScreen();
     return;
   }
   clearFlowTimers();

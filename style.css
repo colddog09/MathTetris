@@ -653,6 +653,37 @@ table#scoreboard-table th {
 table#scoreboard-table td { padding: 8px; border-top: 1px solid #e9e2d4; }
 table#scoreboard-table tbody tr:nth-child(even):not(.is-player) { background: rgba(216, 206, 184, 0.16); }
 
+.student-top1-btn {
+  display: block;
+  margin: 4px auto 12px;
+  padding: 8px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 6px;
+  background: #fff7e6;
+  color: #a5660a;
+  font-weight: 850;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.student-top1-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(165, 102, 10, 0.18); }
+
+.scoreboard-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 14px; }
+.scoreboard-pager .btn { padding: 6px 14px; }
+
+.new-record-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #d9401f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  vertical-align: middle;
+}
+
 .coin-signup-link {
   display: block;
   margin-top: 14px;

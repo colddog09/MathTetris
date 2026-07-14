@@ -17,7 +17,7 @@
     <div class="card">
       <h1>PRIME STACK</h1>
       <p class="subtitle">소수만을 쌓아라!</p>
-      <p id="student-top1" class="hint"></p>
+      <button id="student-top1" class="hint student-top1-btn" type="button" style="display:none;"></button>
       <div id="qr-scan-area">
         <p class="hint">학생증 QR 코드를 카메라에 비춰주세요</p>
         <div id="qr-reader" style="width:260px;margin:12px auto;border-radius:8px;overflow:hidden;"></div>
@@ -350,6 +350,11 @@
         <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
         <tbody id="scoreboard-body"></tbody>
       </table>
+      <div class="scoreboard-pager">
+        <button id="scoreboard-prev" class="btn">이전</button>
+        <span id="scoreboard-page-label" class="hint"></span>
+        <button id="scoreboard-next" class="btn">다음</button>
+      </div>
       <button id="finished-restart" class="btn primary">처음으로</button>
     </div>
   </section>

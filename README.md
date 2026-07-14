@@ -80,6 +80,7 @@ npx vercel dev --listen 3000
 | `NAPLACE_COIN_BASE_URL` | 아니요 | 서버 전용 | 기본값 `https://naplace-coin.vercel.app/api/v1` |
 | `GAME_SIGNING_SECRET` | 예 | 서버 전용 | 결제·게임 토큰 HMAC 키, 최소 32자 |
 | `ENTRY_COIN_PRICE` | 예 | 공개 가능 | 기본 참가비, 테스트값 0 · 운영 권장값 500 |
+| `MIN_WAGER_COINS` | 아니요 | 공개 가능 | 멀티 배팅 최소 금액, 기본값 100 (`ENTRY_COIN_PRICE=0`일 때는 0코인 배팅만 허용) |
 | `MAX_WAGER_COINS` | 예 | 서버 전용 | 1인 최대 배팅액 |
 | `ALLOW_REAL_REWARDS` | 예 | 서버 전용 | `true`일 때 실제 보상 지급 |
 | `ALLOW_TEST_NICKNAME` | 예 | 공개 가능 | Production에서는 반드시 `false` |

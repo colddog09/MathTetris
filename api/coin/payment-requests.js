@@ -78,9 +78,13 @@ module.exports = async function handler(req, res) {
     if (!["entry", "wager"].includes(purpose)) return json(res, 400, { message: "결제 목적이 올바르지 않습니다." });
     const entryPrice = Number(process.env.ENTRY_COIN_PRICE ?? 0);
     const freeBetaMode = entryPrice === 0;
+    const minWager = Number(process.env.MIN_WAGER_COINS || 100);
     if (purpose === "wager" && freeBetaMode && coinAmount !== 0) return json(res, 400, { message: "베타테스트 배팅은 0코인으로만 진행됩니다." });
     if (!Number.isInteger(coinAmount) || coinAmount < 0 || (purpose === "wager" && coinAmount === 0 && !freeBetaMode)) {
-      return json(res, 400, { message: purpose === "wager" ? "배팅 금액은 1 이상의 정수여야 합니다." : "참가비가 올바르지 않습니다." });
+      return json(res, 400, { message: purpose === "wager" ? `배팅 금액은 최소 ${minWager}코인부터 정수로 입력하세요.` : "참가비가 올바르지 않습니다." });
+    }
+    if (purpose === "wager" && !freeBetaMode && coinAmount < minWager) {
+      return json(res, 400, { message: `배팅 금액은 최소 ${minWager}코인부터 가능합니다.` });
     }
     const maxWager = Number(process.env.MAX_WAGER_COINS || 10000);
     if (purpose === "entry" && coinAmount !== entryPrice) return json(res, 400, { message: `참가비는 ${entryPrice}코인입니다.` });

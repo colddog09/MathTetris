@@ -5,7 +5,7 @@ import { SoundManager } from "./sound.js";
 import { loadSettings, saveSettings, loadScoreboard, loadStudentBestScore, appendScoreboardEntry } from "./storage.js";
 import { Matchmaker, isSupabaseConfigured } from "./multiplayer.js";
 import { cancelPaymentRequest, createPaymentRequest, getCoinStudent, getPaymentStatus, requestReward, COIN_PRICE, PAYMENT_POLL_MS } from "./coin-api.js";
-import { ALLOW_TEST_NICKNAME, LEADERBOARD_FIRST_BONUS, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
+import { ALLOW_TEST_NICKNAME, LEADERBOARD_FIRST_BONUS, MIN_WAGER_AMOUNT, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
 
 const sound = new SoundManager();
 const pressedKeys = new Set();
@@ -1135,10 +1135,19 @@ function showWagerScreen() {
   el("wager-my-name").textContent = session.studentName;
   el("wager-opponent-name").textContent = session.opponentName;
   el("wager-amount").disabled = session.wagerPaid || COIN_PRICE === 0;
-  if (COIN_PRICE === 0) el("wager-amount").value = "0";
+  if (COIN_PRICE === 0) {
+    el("wager-amount").value = "0";
+  } else if (!session.wagerPaid && Number(el("wager-amount").value) < MIN_WAGER_AMOUNT) {
+    el("wager-amount").value = String(MIN_WAGER_AMOUNT);
+  }
   el("wager-submit").disabled = session.wagerPaid;
-  el("wager-status").textContent = session.wagerPaid ? "내 배팅 확정 완료" : "0코인 배팅을 확정하세요.";
-  el("wager-submit").textContent = session.wagerPaid ? "배팅 확정 완료" : "0코인 배팅 확정";
+  const displayAmount = Number(el("wager-amount").value) || 0;
+  el("wager-status").textContent = session.wagerPaid
+    ? "내 배팅 확정 완료"
+    : COIN_PRICE === 0
+      ? "0코인 배팅을 확정하세요."
+      : `최소 ${MIN_WAGER_AMOUNT.toLocaleString()}코인부터 배팅을 확정하세요.`;
+  el("wager-submit").textContent = session.wagerPaid ? "배팅 확정 완료" : `${displayAmount.toLocaleString()}코인 배팅 확정`;
   el("wager-opponent-status").textContent = session.opponentWagerPaid
     ? `상대 배팅: ${session.opponentWager}코인 · 확정 완료`
     : "상대 배팅 확정 대기 중";
@@ -1154,6 +1163,12 @@ function maybeAdvanceFromWager() {
   if (!flowTimers.size) scheduleFlow(showMatchedDifficulty, 700, "wager");
 }
 
+el("wager-amount").addEventListener("input", () => {
+  if (session.wagerPaid || COIN_PRICE === 0) return;
+  const amount = Number(el("wager-amount").value) || 0;
+  el("wager-submit").textContent = `${amount.toLocaleString()}코인 배팅 확정`;
+});
+
 el("wager-submit").addEventListener("click", async () => {
   clickSound();
   const amount = Number(el("wager-amount").value);
@@ -1163,6 +1178,10 @@ el("wager-submit").addEventListener("click", async () => {
   }
   if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
     el("wager-error").textContent = "0 이상의 정수 금액을 입력하세요.";
+    return;
+  }
+  if (COIN_PRICE > 0 && amount < MIN_WAGER_AMOUNT) {
+    el("wager-error").textContent = `배팅 금액은 최소 ${MIN_WAGER_AMOUNT.toLocaleString()}코인부터 가능합니다.`;
     return;
   }
   el("wager-submit").disabled = true;

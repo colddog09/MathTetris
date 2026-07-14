@@ -1,6 +1,7 @@
-import { ALLOW_TEST_NICKNAME, ENTRY_COIN_PRICE } from "./runtime-config.js";
+import { ALLOW_TEST_NICKNAME, ENTRY_COIN_PRICE, MIN_WAGER_COINS } from "./runtime-config.js";
 
 export const COIN_PRICE = ENTRY_COIN_PRICE;
+export const MIN_WAGER_AMOUNT = MIN_WAGER_COINS;
 export { ALLOW_TEST_NICKNAME };
 export const PAYMENT_POLL_MS = 1500;
 export const LEADERBOARD_FIRST_BONUS = 2000;

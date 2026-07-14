@@ -14,7 +14,7 @@ const content = `export const SUPABASE_URL = ${JSON.stringify(url)};\nexport con
 fs.writeFileSync(outPath, content);
 console.log(`supabase-config.js generated at ${outPath}`);
 
-const entryCoinPrice = Number(process.env.ENTRY_COIN_PRICE || 500);
+const entryCoinPrice = Number(process.env.ENTRY_COIN_PRICE ?? 0);
 if (!Number.isInteger(entryCoinPrice) || entryCoinPrice < 0) {
   console.error("ENTRY_COIN_PRICE는 0 이상의 정수여야 합니다.");
   process.exit(1);

@@ -75,9 +75,13 @@ module.exports = async function handler(req, res) {
     const attemptId = validAttemptId(paymentAttemptId);
     if (!/^\d{4}$/.test(String(studentId || ""))) return json(res, 400, { message: "올바른 4자리 학번을 입력하세요." });
     if (!attemptId) return json(res, 400, { message: "결제 시도 번호가 올바르지 않습니다." });
-    if (!Number.isInteger(coinAmount) || coinAmount < 1) return json(res, 400, { message: "결제 금액은 1 이상의 정수여야 합니다." });
     if (!["entry", "wager"].includes(purpose)) return json(res, 400, { message: "결제 목적이 올바르지 않습니다." });
-    const entryPrice = Number(process.env.ENTRY_COIN_PRICE || 500);
+    const entryPrice = Number(process.env.ENTRY_COIN_PRICE ?? 0);
+    const freeBetaMode = entryPrice === 0;
+    if (purpose === "wager" && freeBetaMode && coinAmount !== 0) return json(res, 400, { message: "베타테스트 배팅은 0코인으로만 진행됩니다." });
+    if (!Number.isInteger(coinAmount) || coinAmount < 0 || (purpose === "wager" && coinAmount === 0 && !freeBetaMode)) {
+      return json(res, 400, { message: purpose === "wager" ? "배팅 금액은 1 이상의 정수여야 합니다." : "참가비가 올바르지 않습니다." });
+    }
     const maxWager = Number(process.env.MAX_WAGER_COINS || 10000);
     if (purpose === "entry" && coinAmount !== entryPrice) return json(res, 400, { message: `참가비는 ${entryPrice}코인입니다.` });
     if (purpose === "wager" && (coinAmount > maxWager || !/^invite-[A-Z0-9]{6}-\d+$/.test(String(roomId)))) {
@@ -94,6 +98,16 @@ module.exports = async function handler(req, res) {
       reason: title,
       settlementKey: `charge:${purpose}:${attemptId}`,
     };
+    if (charge.amount === 0 && freeBetaMode) {
+      const studentResponse = await naplaceFetch(`/students/${encodeURIComponent(charge.studentId)}`);
+      const studentData = await studentResponse.json().catch(() => ({}));
+      if (!studentResponse.ok) return json(res, studentResponse.status, { message: studentData.message || "Naplace Coin 계정을 확인하지 못했습니다." });
+      const student = studentData.student || studentData.data || studentData;
+      const returnedId = String(student.id ?? student.student_id ?? "");
+      if (returnedId && returnedId !== charge.studentId) return json(res, 502, { message: "Naplace Coin 계정 정보가 일치하지 않습니다." });
+      return approvedResponse(res, charge);
+    }
+
     const reservation = await reserveCharge(charge);
     if (reservation.completed) return approvedResponse(res, charge, true);
     if (reservation.conflict) return json(res, 409, { code: "payment_conflict", message: "결제 시도 정보가 이전 요청과 일치하지 않습니다." });

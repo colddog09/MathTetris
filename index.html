@@ -7,12 +7,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<aside class="beta-notice" role="status">
+  <b>BETA TEST</b>
+  <span>현재는 베타테스트 진행 중입니다. 본 게임은 내일 나플라스 부스에서 즐겨주세요! 버그 제보는 2218 정선재에게</span>
+</aside>
 <div id="app">
 
   <section id="screen-student" class="screen card-screen active">
     <div class="card">
       <h1>PRIME STACK</h1>
       <p class="subtitle">소수만을 쌓아라!</p>
+      <p id="student-top1" class="hint"></p>
       <div id="qr-scan-area">
         <p class="hint">학생증 QR 코드를 카메라에 비춰주세요</p>
         <div id="qr-reader" style="width:260px;margin:12px auto;border-radius:8px;overflow:hidden;"></div>
@@ -38,9 +43,12 @@
       <p id="coin-price-label" class="subtitle"></p>
       <p id="coin-status" class="payment-status"></p>
       <p id="coin-error" class="error"></p>
+      <a class="coin-signup-link" href="https://naplace-coin.vercel.app/signup" target="_blank" rel="noopener noreferrer">
+        Naplace Coin 계정이 없나요? <b>계정 생성하러 가기 ↗</b>
+      </a>
       <div class="button-row" style="margin-top:16px;">
         <button id="coin-back" class="btn">정보 수정</button>
-        <button id="coin-pay" class="btn primary">500코인 바로 결제</button>
+        <button id="coin-pay" class="btn primary">0코인으로 입장</button>
       </div>
     </div>
   </section>
@@ -69,7 +77,10 @@
       <p class="subtitle">난이도를 누르고 보상 기준을 확인한 뒤 확정하세요</p>
       <p id="difficulty-list-status" class="hint"></p>
       <div class="difficulty-picker">
-        <div id="difficulty-list"></div>
+        <div class="difficulty-list-col">
+          <div id="difficulty-list"></div>
+          <button id="difficulty-scoreboard" class="btn difficulty-scoreboard-btn">스코어보드 보기</button>
+        </div>
         <div id="difficulty-detail" class="difficulty-detail">
           <h2>점수 배율</h2>
           <strong id="difficulty-score-multiplier" class="difficulty-score-multiplier">×—</strong>
@@ -252,15 +263,15 @@
     <div class="card">
       <h1>MATCH BET</h1>
       <p class="match-vs"><span id="wager-my-name"></span> <span class="vs-text">VS</span> <span id="wager-opponent-name"></span></p>
-      <p class="hint">각자 원하는 금액을 확인하면 즉시 결제됩니다. 승자는 두 금액의 합계를 받습니다.</p>
+      <p class="hint">베타테스트 중에는 0코인 배팅으로 진행합니다. 양쪽이 확인하면 난이도 선택으로 넘어갑니다.</p>
       <label>내 배팅 금액</label>
-      <input id="wager-amount" type="number" min="1" step="1" value="100">
+      <input id="wager-amount" type="number" min="0" step="1" value="0">
       <p id="wager-opponent-status" class="hint">상대 배팅 입력 대기 중</p>
       <p id="wager-status" class="payment-status"></p>
       <p id="wager-error" class="error"></p>
       <div class="button-row">
         <button id="wager-cancel" class="btn">매칭 취소</button>
-        <button id="wager-submit" class="btn primary">배팅 금액 바로 결제</button>
+        <button id="wager-submit" class="btn primary">0코인 배팅 확정</button>
       </div>
     </div>
   </section>
@@ -315,6 +326,20 @@
   </section>
 
   <div id="flow-countdown" aria-hidden="true"></div>
+
+  <div id="match-found-fx" aria-hidden="true">
+    <div class="match-found-rays"></div>
+    <div class="match-found-panel">
+      <span class="match-found-kicker">OPPONENT CONNECTED</span>
+      <strong class="match-found-title">MATCH FOUND</strong>
+      <div class="match-found-names">
+        <b id="match-found-my-name">PLAYER 1</b>
+        <i>VS</i>
+        <b id="match-found-opponent-name">PLAYER 2</b>
+      </div>
+      <small>대전 상대 연결 완료</small>
+    </div>
+  </div>
 
   <section id="screen-finished" class="screen card-screen">
     <div class="card wide">

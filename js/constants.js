@@ -171,14 +171,4 @@ export const DIFFICULTIES = [
   ["master", "마스터", 300, "최고 난이도"],
 ];
 
-export const SEED_SCOREBOARD = [
-  { student_id: "2514", name: "꾸이", best_score: 5850, runs: 1, difficulty: "보통", max_number: 200, played_at: "2026-07-02 14:52:21" },
-  { student_id: "2514", name: "꾸삼", best_score: 1350, runs: 1, difficulty: "쉬움", max_number: 100, played_at: "2026-07-02 15:00:05" },
-  { student_id: "심찬", name: "바보", best_score: 600, runs: 3, difficulty: "쉬움", max_number: 100, played_at: "2026-07-01 23:50:10" },
-  { student_id: "2222", name: "김게이", best_score: 575, runs: 1, difficulty: "마스터", max_number: 500, played_at: "2026-07-02 15:02:16" },
-  { student_id: "2209", name: "송예준", best_score: 300, runs: 1, difficulty: "보통", max_number: 200, played_at: "2026-07-02 14:56:45" },
-  { student_id: "2218", name: "정선재", best_score: 0, runs: 2, difficulty: "보통", max_number: 100, played_at: "2026-07-01 21:47:08" },
-  { student_id: "2218", name: "정선재", best_score: 0, runs: 1, difficulty: "마스터", max_number: 500, played_at: "2026-07-02 15:00:31" },
-  { student_id: "2218", name: "정선재", best_score: 0, runs: 1, difficulty: "보통", max_number: 200, played_at: "2026-07-08 11:07:49" },
-  { student_id: "2218", name: "정선재", best_score: -175, runs: 1, difficulty: "쉬움", max_number: 50, played_at: "2026-07-01 21:26:16" },
-];
+export const SEED_SCOREBOARD = [];

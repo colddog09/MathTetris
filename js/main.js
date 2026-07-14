@@ -99,6 +99,7 @@ let lastDangerLevel = 0;
 let multiplayerLeadState = "tie";
 let lastLeadEffectAt = 0;
 let roomJoinTimer = null;
+let matchFoundFxTimer = null;
 let reverseEffectWasActive = false;
 let heavyEffectWasActive = false;
 const el = (id) => document.getElementById(id);
@@ -117,11 +118,17 @@ async function confirmCoinPayment(studentId, amount) {
     const approve = el("payment-confirm-approve");
     const cancel = el("payment-confirm-cancel");
     const warning = el("payment-confirm-warning");
+    el("payment-confirm-title").textContent = coinAmount === 0 ? "0코인으로 입장하시겠습니까?" : "결제하시겠습니까?";
     el("payment-confirm-name").textContent = student.name;
     el("payment-confirm-balance").textContent = `${balance.toLocaleString()}코인`;
     el("payment-confirm-amount").textContent = `${coinAmount.toLocaleString()}코인`;
     const insufficient = balance < coinAmount;
-    warning.textContent = insufficient ? "잔액이 부족하여 결제를 진행할 수 없습니다." : `결제 후 잔액: ${(balance - coinAmount).toLocaleString()}코인`;
+    warning.textContent = insufficient
+      ? "잔액이 부족하여 결제를 진행할 수 없습니다."
+      : coinAmount === 0
+        ? "테스트 기간에는 코인이 차감되지 않습니다."
+        : `결제 후 잔액: ${(balance - coinAmount).toLocaleString()}코인`;
+    approve.textContent = coinAmount === 0 ? "확인하고 입장" : "확인하고 바로 결제";
     approve.disabled = insufficient;
     modal.hidden = false;
 
@@ -153,6 +160,30 @@ function clearFlowTimers() {
   flowVersion += 1;
   flowTimers.forEach(clearTimeout);
   flowTimers.clear();
+  if (matchFoundFxTimer) clearTimeout(matchFoundFxTimer);
+  matchFoundFxTimer = null;
+  el("match-found-fx")?.classList.remove("show");
+}
+
+function playMatchFoundTransition(onComplete) {
+  if (matchFoundFxTimer) clearTimeout(matchFoundFxTimer);
+  matchFoundFxTimer = null;
+
+  const overlay = el("match-found-fx");
+  el("match-found-my-name").textContent = session.studentName || "PLAYER 1";
+  el("match-found-opponent-name").textContent = session.opponentName || "PLAYER 2";
+  overlay.classList.remove("show");
+  void overlay.offsetWidth;
+  overlay.classList.add("show");
+  sound.play("match");
+
+  const expectedScreen = session.screen;
+  matchFoundFxTimer = setTimeout(() => {
+    matchFoundFxTimer = null;
+    overlay.classList.remove("show");
+    if (!session.multiplayer || session.screen !== expectedScreen) return;
+    onComplete();
+  }, 1250);
 }
 
 function scheduleFlow(callback, delay, expectedScreen = session.screen) {
@@ -527,7 +558,7 @@ function showCoinScreen(student) {
   el("coin-error").textContent = "";
   const payBtn = el("coin-pay");
   payBtn.disabled = false;
-  payBtn.textContent = `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
+  payBtn.textContent = COIN_PRICE === 0 ? "0코인으로 입장" : `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
   session.screen = "coin";
   showScreen("screen-coin");
 }
@@ -543,6 +574,21 @@ async function initStudentScreen() {
   showScreen("screen-student");
   el("qr-scan-area").style.display = "none";
   el("manual-login-area").style.display = "block";
+  loadTopScoreForStudentScreen();
+}
+
+async function loadTopScoreForStudentScreen() {
+  const top1El = el("student-top1");
+  top1El.textContent = "";
+  try {
+    const scoreboard = (await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name));
+    if (scoreboard.length > 0) {
+      const top = scoreboard[0];
+      top1El.textContent = `현재 1등: ${top.name} (${Number(top.best_score).toLocaleString()}점)`;
+    }
+  } catch (error) {
+    // scoreboard unavailable, leave blank
+  }
 }
 
 function hasCurrentEntryAccess() {
@@ -598,7 +644,7 @@ el("coin-pay").addEventListener("click", async () => {
     const confirmed = await confirmCoinPayment(session.studentId, COIN_PRICE);
     if (!confirmed) {
       payBtn.disabled = false;
-      payBtn.textContent = `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
+      payBtn.textContent = COIN_PRICE === 0 ? "0코인으로 입장" : `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
       el("coin-status").textContent = "결제가 취소되었습니다. 원할 때 다시 요청할 수 있습니다.";
       return;
     }
@@ -610,7 +656,9 @@ el("coin-pay").addEventListener("click", async () => {
       session.entryPaid = true;
       session.entryToken = request.game_token;
       entryPaymentAttemptId = "";
-      el("coin-status").textContent = request.duplicate ? "이미 완료된 결제를 확인했습니다." : "결제가 즉시 완료되었습니다.";
+      el("coin-status").textContent = COIN_PRICE === 0
+        ? "계정 확인 완료 · 코인 차감 없이 입장합니다."
+        : request.duplicate ? "이미 완료된 결제를 확인했습니다." : "결제가 즉시 완료되었습니다.";
       session.screen = "mode";
       showScreen("screen-mode");
       return;
@@ -1055,12 +1103,14 @@ function prepareMultiplayerSession() {
 function showWagerScreen() {
   el("wager-my-name").textContent = session.studentName;
   el("wager-opponent-name").textContent = session.opponentName;
-  el("wager-amount").disabled = session.wagerPaid;
+  el("wager-amount").disabled = session.wagerPaid || COIN_PRICE === 0;
+  if (COIN_PRICE === 0) el("wager-amount").value = "0";
   el("wager-submit").disabled = session.wagerPaid;
-  el("wager-status").textContent = session.wagerPaid ? "내 배팅 결제 완료" : "내 배팅 금액을 입력하세요.";
-  el("wager-opponent-status").textContent = session.opponentWager
-    ? `상대 배팅: ${session.opponentWager}코인 · ${session.opponentWagerPaid ? "결제 완료" : "결제 대기"}`
-    : "상대 배팅 입력 대기 중";
+  el("wager-status").textContent = session.wagerPaid ? "내 배팅 확정 완료" : "0코인 배팅을 확정하세요.";
+  el("wager-submit").textContent = session.wagerPaid ? "배팅 확정 완료" : "0코인 배팅 확정";
+  el("wager-opponent-status").textContent = session.opponentWagerPaid
+    ? `상대 배팅: ${session.opponentWager}코인 · 확정 완료`
+    : "상대 배팅 확정 대기 중";
   el("wager-error").textContent = "";
   session.screen = "wager";
   showScreen("screen-wager");
@@ -1076,8 +1126,12 @@ function maybeAdvanceFromWager() {
 el("wager-submit").addEventListener("click", async () => {
   clickSound();
   const amount = Number(el("wager-amount").value);
-  if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) {
-    el("wager-error").textContent = "1 이상의 정수 금액을 입력하세요.";
+  if (COIN_PRICE === 0 && amount !== 0) {
+    el("wager-error").textContent = "베타테스트 배팅은 0코인으로만 진행됩니다.";
+    return;
+  }
+  if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
+    el("wager-error").textContent = "0 이상의 정수 금액을 입력하세요.";
     return;
   }
   el("wager-submit").disabled = true;
@@ -1088,13 +1142,13 @@ el("wager-submit").addEventListener("click", async () => {
     const confirmed = await confirmCoinPayment(session.studentId, amount);
     if (!confirmed) {
       el("wager-submit").disabled = false;
-      el("wager-amount").disabled = false;
+      el("wager-amount").disabled = COIN_PRICE === 0;
       el("wager-status").textContent = "결제가 취소되었습니다. 금액을 확인하고 다시 요청하세요.";
       return;
     }
     session.wagerAmount = amount;
     matchmaker.sendCommand("wager", { amount });
-    el("wager-status").textContent = "배팅 금액 즉시 결제 중...";
+    el("wager-status").textContent = amount === 0 ? "0코인 배팅 확인 중..." : "배팅 금액 즉시 결제 중...";
     session.wagerPaymentAttemptId ||= crypto.randomUUID();
     const request = await createPaymentRequest(session.studentId, amount, "wager", matchmaker.roomId, session.wagerPaymentAttemptId);
     session.wagerTrackingToken = request.tracking_token || "";
@@ -1128,7 +1182,7 @@ el("wager-submit").addEventListener("click", async () => {
       el("wager-error").textContent = error.message;
       el("wager-status").textContent = "승인 대기 종료 · 다시 요청 가능";
       el("wager-submit").disabled = false;
-      el("wager-amount").disabled = false;
+      el("wager-amount").disabled = COIN_PRICE === 0;
       el("wager-submit").textContent = "배팅 결제 다시 요청";
     };
     const poll = async () => {
@@ -1151,7 +1205,7 @@ el("wager-submit").addEventListener("click", async () => {
     if (["payment_failed", "payment_conflict"].includes(error.code)) session.wagerPaymentAttemptId = "";
     el("wager-error").textContent = error.message || "배팅 요청에 실패했습니다.";
     el("wager-submit").disabled = false;
-    el("wager-amount").disabled = false;
+    el("wager-amount").disabled = COIN_PRICE === 0;
   }
 });
 
@@ -1220,11 +1274,10 @@ function onMultiplayerMatched(opponent) {
   };
   remoteState = {};
   session.multiplayer = true;
-  sound.play("match");
   session.opponentName = opponent?.name || "상대방";
   session.opponentStudentId = "";
   session.itemMode = Boolean(opponent?.roomOptions?.itemMode);
-  showWagerScreen();
+  playMatchFoundTransition(showWagerScreen);
 }
 
 function startMatching() {
@@ -1282,14 +1335,13 @@ function startMatching() {
     };
     remoteState = {};
     session.multiplayer = true;
-    sound.play("match");
     session.opponentName = opponent?.name || "상대방";
     session.opponentStudentId = "";
     el("matching-waiting").style.display = "none";
     el("matching-found").style.display = "block";
     el("match-my-name").textContent = session.studentName;
     el("match-opponent-name").textContent = session.opponentName;
-    showWagerScreen();
+    playMatchFoundTransition(showWagerScreen);
   }, session.studentName).catch((error) => {
     el("matching-waiting").style.display = "none";
     el("matching-found").style.display = "block";
@@ -1852,15 +1904,30 @@ async function settleCoinResult() {
 
 el("result-scoreboard").addEventListener("click", async () => {
   clickSound();
+  session.scoreboardOrigin = "result";
   session.screen = "finished";
   showScreen("screen-finished");
+  el("finished-restart").textContent = "처음으로";
   el("finished-reward").textContent = session.rewardStatusText;
   el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
   await showFinishedScreen();
 });
 
+el("difficulty-scoreboard").addEventListener("click", async () => {
+  clickSound();
+  session.scoreboardOrigin = "difficulty";
+  session.screen = "finished";
+  showScreen("screen-finished");
+  el("finished-restart").textContent = "돌아가기";
+  el("finished-reward").textContent = "";
+  el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
+  await showFinishedScreen();
+});
+
 async function showFinishedScreen() {
-  el("finished-subtitle").textContent = `${session.studentName} 최종 점수: ${session.finalScore.toLocaleString()}`;
+  el("finished-subtitle").textContent = session.scoreboardOrigin === "difficulty"
+    ? "전체 스코어보드"
+    : `${session.studentName} 최종 점수: ${session.finalScore.toLocaleString()}`;
   const scoreboard = (await loadScoreboard()).filter((row) => !isRankingExcludedName(row.name));
   const body = el("scoreboard-body");
   body.innerHTML = "";
@@ -1886,6 +1953,12 @@ async function showFinishedScreen() {
 
 el("finished-restart").addEventListener("click", () => {
   clickSound();
+  if (session.scoreboardOrigin === "difficulty") {
+    session.scoreboardOrigin = null;
+    session.screen = "difficulty";
+    showScreen("screen-difficulty");
+    return;
+  }
   clearFlowTimers();
   matchmaker.leaveRoom();
   sound.stopMusic();

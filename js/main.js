@@ -2228,7 +2228,15 @@ window.addEventListener("keydown", (event) => {
     useItem(Number(key) - 1);
     return;
   }
-  if (game.gameOver) return;
+  if (game.gameOver) {
+    if (key === "return") {
+      event.preventDefault();
+      clickSound();
+      recordRunScore();
+      finishSession();
+    }
+    return;
+  }
   if (game.clearingAnimation) return;
   key = reverseControlKey(key);
   if (key === "f1") {

@@ -100,7 +100,7 @@
     <div class="card">
       <h1>DIFFICULTY WHEEL</h1>
       <p class="subtitle">서로 다른 난이도에 투표했습니다</p>
-      <div id="difficulty-wheel" class="difficulty-wheel"><span>VS</span></div>
+      <div id="difficulty-wheel" class="difficulty-wheel"><div class="wheel-disc"></div><span>VS</span></div>
       <p id="wheel-options" class="match-vs"></p>
       <p id="wheel-status" class="hint">돌림판으로 최종 난이도를 정하는 중...</p>
     </div>
@@ -228,14 +228,13 @@
             <p><strong>사용</strong> 게임 중 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 키 또는 슬롯을 누르면 상대에게 즉시 발동합니다.</p>
           </section>
           <div class="item-rule-list">
-            <article><i>●</i><div><b>먹물</b><p>상대 화면을 10초 동안 먹물로 가립니다.</p></div></article>
-            <article><i>⚡</i><div><b>초고속</b><p>상대 블록의 자동 낙하를 10초 동안 3.2배 빠르게 만듭니다.</p></div></article>
-            <article><i>↔</i><div><b>좌우 반전</b><p>상대의 좌우 이동키를 10초 동안 반대로 바꿉니다.</p></div></article>
-            <article><i>H</i><div><b>홀드 봉인</b><p>상대가 10초 동안 홀드를 사용할 수 없게 합니다.</p></div></article>
-            <article><i>?</i><div><b>미리보기 차단</b><p>상대의 NEXT 블록을 10초 동안 숨깁니다.</p></div></article>
-            <article><i>▼</i><div><b>무게추</b><p>상대가 10초 동안 하드 드롭 외 조작을 할 수 없게 합니다.</p></div></article>
-            <article><i>◇</i><div><b>방어막</b><p>다음에 들어오는 방해 아이템을 한 번 막습니다.</p></div></article>
-            <article><i>✦</i><div><b>정화</b><p>현재 적용된 모든 방해 효과를 즉시 제거합니다.</p></div></article>
+            <article><i>🖤</i><div><b>먹물</b><p>상대 화면의 70%를 10초 동안 먹물로 가립니다.</p></div></article>
+            <article><i>⚡</i><div><b>초고속</b><p>상대 블록의 자동 낙하를 10초 동안 5배 빠르게 만듭니다.</p></div></article>
+            <article><i>🔀</i><div><b>좌우 반전</b><p>상대의 좌우 이동키를 10초 동안 반대로 바꿉니다.</p></div></article>
+            <article><i>🔒</i><div><b>홀드 봉인</b><p>상대가 10초 동안 홀드를 사용할 수 없게 합니다.</p></div></article>
+            <article><i>🙈</i><div><b>미리보기 차단</b><p>상대의 NEXT 블록을 10초 동안 숨깁니다.</p></div></article>
+            <article><i>🛡️</i><div><b>방어막</b><p>다음에 들어오는 방해 아이템을 한 번 막습니다.</p></div></article>
+            <article><i>✨</i><div><b>정화</b><p>현재 적용된 모든 방해 효과를 즉시 제거합니다.</p></div></article>
           </div>
         </div>
       </div>
@@ -308,9 +307,9 @@
     <aside id="item-battle-ui" aria-label="아이템 슬롯">
       <div class="item-battle-title"><b>ITEM BATTLE</b><span>올소수 줄로 획득</span></div>
       <div class="item-slots">
-        <button class="item-slot" data-slot="0"><kbd>1</kbd><span>비어 있음</span></button>
-        <button class="item-slot" data-slot="1"><kbd>2</kbd><span>비어 있음</span></button>
-        <button class="item-slot" data-slot="2"><kbd>3</kbd><span>비어 있음</span></button>
+        <button class="item-slot" data-slot="0"><kbd>1</kbd><span class="item-icon">—</span><span class="item-name">비어 있음</span></button>
+        <button class="item-slot" data-slot="1"><kbd>2</kbd><span class="item-icon">—</span><span class="item-name">비어 있음</span></button>
+        <button class="item-slot" data-slot="2"><kbd>3</kbd><span class="item-icon">—</span><span class="item-name">비어 있음</span></button>
       </div>
       <p id="item-effect-status"></p>
     </aside>

@@ -47,6 +47,27 @@ export async function loadScoreboard() {
   return [...SEED_SCOREBOARD, ...extra].sort((a, b) => b.best_score - a.best_score);
 }
 
+export async function loadStudentBestScore(studentId) {
+  const client = getSupabase();
+  if (client) {
+    const { data, error } = await client
+      .from("scoreboard")
+      .select("best_score")
+      .eq("student_id", studentId)
+      .order("best_score", { ascending: false })
+      .limit(1);
+    if (!error && data) return data[0]?.best_score ?? null;
+  }
+  let extra = [];
+  try {
+    extra = JSON.parse(localStorage.getItem(SCOREBOARD_FALLBACK_KEY) || "[]");
+    if (!Array.isArray(extra)) extra = [];
+  } catch { extra = []; }
+  const rows = [...SEED_SCOREBOARD, ...extra].filter((row) => row.student_id === studentId);
+  if (!rows.length) return null;
+  return Math.max(...rows.map((row) => Number(row.best_score) || 0));
+}
+
 export async function appendScoreboardEntry(entry, gameToken) {
   if (getSupabase()) {
     const response = await fetch("/api/scoreboard", {

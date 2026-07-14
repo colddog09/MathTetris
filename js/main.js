@@ -2,7 +2,7 @@ import { DIFFICULTIES, SETTING_ROWS, SENSITIVITY_PRESETS, KEY_ALIASES, WIDTH, HE
 import { TetrisGame } from "./tetris.js";
 import { renderGame, renderOpponentBoard } from "./render.js";
 import { SoundManager } from "./sound.js";
-import { loadSettings, saveSettings, loadScoreboard, appendScoreboardEntry } from "./storage.js";
+import { loadSettings, saveSettings, loadScoreboard, loadStudentBestScore, appendScoreboardEntry } from "./storage.js";
 import { Matchmaker, isSupabaseConfigured } from "./multiplayer.js";
 import { cancelPaymentRequest, createPaymentRequest, getCoinStudent, getPaymentStatus, requestReward, COIN_PRICE, PAYMENT_POLL_MS } from "./coin-api.js";
 import { ALLOW_TEST_NICKNAME, LEADERBOARD_FIRST_BONUS, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
@@ -14,14 +14,13 @@ let remoteState = null;
 let lastMultiplayerSend = 0;
 
 const ITEM_DEFS = {
-  ink: { label: "먹물", icon: "●", duration: 10000, sound: "ink", target: "opponent" },
+  ink: { label: "먹물", icon: "🖤", duration: 10000, sound: "ink", target: "opponent" },
   speed: { label: "초고속", icon: "⚡", duration: 10000, sound: "speedAttack", target: "opponent" },
-  reverse: { label: "좌우 반전", icon: "↔", duration: 10000, sound: "reverseAttack", target: "opponent" },
-  seal: { label: "홀드 봉인", icon: "H", duration: 10000, sound: "reverseAttack", target: "opponent" },
-  preview: { label: "NEXT 차단", icon: "?", duration: 10000, sound: "ink", target: "opponent" },
-  heavy: { label: "무게추", icon: "▼", duration: 10000, sound: "speedAttack", target: "opponent" },
-  shield: { label: "방어막", icon: "◇", duration: 0, sound: "itemGet", target: "self" },
-  cleanse: { label: "정화", icon: "✦", duration: 0, sound: "good", target: "self" },
+  reverse: { label: "좌우 반전", icon: "🔀", duration: 10000, sound: "reverseAttack", target: "opponent" },
+  seal: { label: "홀드 봉인", icon: "🔒", duration: 10000, sound: "reverseAttack", target: "opponent" },
+  preview: { label: "NEXT 차단", icon: "🙈", duration: 10000, sound: "ink", target: "opponent" },
+  shield: { label: "방어막", icon: "🛡️", duration: 0, sound: "itemGet", target: "self" },
+  cleanse: { label: "정화", icon: "✨", duration: 0, sound: "good", target: "self" },
 };
 const ITEM_TYPES = Object.keys(ITEM_DEFS);
 const RANKING_EXCLUDED_NAMES = new Set(["한교동"]);
@@ -79,7 +78,7 @@ const session = {
   matchCountdownStarted: false,
   itemMode: false,
   itemInventory: [],
-  itemEffects: { inkUntil: 0, speedUntil: 0, reverseUntil: 0, sealUntil: 0, previewUntil: 0, heavyUntil: 0 },
+  itemEffects: { inkUntil: 0, speedUntil: 0, reverseUntil: 0, sealUntil: 0, previewUntil: 0 },
   itemShieldCharges: 0,
   lastItemEarned: null,
   opponentDisconnected: false,
@@ -103,7 +102,6 @@ let lastLeadEffectAt = 0;
 let roomJoinTimer = null;
 let matchFoundFxTimer = null;
 let reverseEffectWasActive = false;
-let heavyEffectWasActive = false;
 const el = (id) => document.getElementById(id);
 let paymentConfirmationOpen = false;
 
@@ -285,11 +283,10 @@ function itemEffectActive(type, now = performance.now() / 1000) {
 
 function resetItemBattle() {
   session.itemInventory = [];
-  session.itemEffects = { inkUntil: 0, speedUntil: 0, reverseUntil: 0, sealUntil: 0, previewUntil: 0, heavyUntil: 0 };
+  session.itemEffects = { inkUntil: 0, speedUntil: 0, reverseUntil: 0, sealUntil: 0, previewUntil: 0 };
   session.itemShieldCharges = 0;
   session.lastItemEarned = null;
   reverseEffectWasActive = false;
-  heavyEffectWasActive = false;
   el("ink-overlay").classList.remove("active");
   el("item-effect-status").textContent = "";
   renderItemSlots();
@@ -298,10 +295,12 @@ function resetItemBattle() {
 function renderItemSlots() {
   document.querySelectorAll(".item-slot").forEach((button, index) => {
     const item = session.itemInventory[index];
-    const label = button.querySelector("span");
+    const iconEl = button.querySelector(".item-icon");
+    const nameEl = button.querySelector(".item-name");
     button.classList.toggle("ready", Boolean(item));
     button.disabled = !item;
-    label.textContent = item ? `${ITEM_DEFS[item].icon} ${ITEM_DEFS[item].label}` : "비어 있음";
+    iconEl.textContent = item ? ITEM_DEFS[item].icon : "—";
+    nameEl.textContent = item ? ITEM_DEFS[item].label : "비어 있음";
     button.title = item
       ? `${index + 1}키: ${ITEM_DEFS[item].target === "self" ? "나에게" : "상대에게"} ${ITEM_DEFS[item].label} 사용`
       : "올소수 줄을 지우면 획득";
@@ -394,18 +393,12 @@ function updateItemBattleEffects(now) {
   const reverseActive = itemEffectActive("reverse", now);
   const sealActive = itemEffectActive("seal", now);
   const previewActive = itemEffectActive("preview", now);
-  const heavyActive = itemEffectActive("heavy", now);
-  game.externalSpeedMultiplier = speedActive ? 3.2 : 1;
+  game.externalSpeedMultiplier = speedActive ? 5 : 1;
   el("ink-overlay").classList.toggle("active", inkActive);
   if (reverseActive !== reverseEffectWasActive) {
     pressedKeys.clear();
     game.moveDir = 0;
     reverseEffectWasActive = reverseActive;
-  }
-  if (heavyActive !== heavyEffectWasActive) {
-    pressedKeys.clear();
-    game.moveDir = 0;
-    heavyEffectWasActive = heavyActive;
   }
   const effects = [];
   if (inkActive) effects.push(`먹물 ${Math.ceil(session.itemEffects.inkUntil - now)}초`);
@@ -413,7 +406,6 @@ function updateItemBattleEffects(now) {
   if (reverseActive) effects.push(`좌우 반전 ${Math.ceil(session.itemEffects.reverseUntil - now)}초`);
   if (sealActive) effects.push(`홀드 봉인 ${Math.ceil(session.itemEffects.sealUntil - now)}초`);
   if (previewActive) effects.push(`NEXT 차단 ${Math.ceil(session.itemEffects.previewUntil - now)}초`);
-  if (heavyActive) effects.push(`무게추 ${Math.ceil(session.itemEffects.heavyUntil - now)}초`);
   if (session.itemShieldCharges > 0) effects.push("방어막 준비");
   el("item-effect-status").textContent = effects.length ? effects.join(" · ") : "1 · 2 · 3 키로 사용";
 }
@@ -860,11 +852,9 @@ function showRoomWaiting(code, joining = false, itemMode = false) {
   const itemModeInput = el("room-item-mode");
   itemModeInput.checked = itemMode;
   itemModeInput.disabled = joining;
-  el("room-item-mode-control").classList.toggle("readonly", joining);
+  el("room-item-mode-control").style.display = joining ? "none" : "flex";
   el("room-item-mode-title").textContent = `아이템전 ${itemMode ? "ON" : "OFF"}`;
-  el("room-item-mode-hint").textContent = joining
-    ? `방장이 ${itemMode ? "아이템전" : "일반전"}으로 설정했습니다.`
-    : "상대가 참가하기 전까지 켜거나 끌 수 있습니다.";
+  el("room-item-mode-hint").textContent = "상대가 참가하기 전까지 켜거나 끌 수 있습니다.";
   el("item-rules-toggle").setAttribute("aria-expanded", "false");
   el("item-rules-panel").hidden = true;
   el("room-error").textContent = "";
@@ -1858,11 +1848,8 @@ async function finishSession() {
     const pad = (n) => String(n).padStart(2, "0");
     const playedAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     try {
-      const priorBoard = await loadScoreboard().catch(() => []);
-      const priorBest = priorBoard
-        .filter((row) => row.student_id === session.studentId)
-        .reduce((max, row) => Math.max(max, Number(row.best_score) || 0), -Infinity);
-      session.personalBest = session.finalScore > priorBest;
+      const priorBest = await loadStudentBestScore(session.studentId).catch(() => null);
+      session.personalBest = priorBest === null || session.finalScore > priorBest;
       const saved = await appendScoreboardEntry({
         student_id: session.studentId,
         name: session.studentName,
@@ -2233,10 +2220,6 @@ window.addEventListener("keydown", (event) => {
   }
   if (session.settingsOpen) {
     handleSettingsKey(key);
-    return;
-  }
-  if (itemEffectActive("heavy") && key !== "space") {
-    if (GAME_KEYS.has(key)) event.preventDefault();
     return;
   }
   if (itemEffectActive("seal") && (key === "c" || key === "shift_l" || key === "shift_r")) {

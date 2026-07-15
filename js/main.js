@@ -1,11 +1,10 @@
-import { DIFFICULTIES, SETTING_ROWS, SENSITIVITY_PRESETS, KEY_ALIASES, WIDTH, HEIGHT, PRIME_SCORE, COMPOSITE_SCORE, COLORS_BG } from "./constants.js";
+import { DIFFICULTIES, SETTING_ROWS, SENSITIVITY_PRESETS, KEY_ALIASES, WIDTH, HEIGHT, PRIME_SCORE, COMPOSITE_SCORE, COLORS_BG, finalScoreFor, scoreMultiplierForDifficulty } from "./constants.js";
 import { TetrisGame } from "./tetris.js";
 import { renderGame, renderOpponentBoard } from "./render.js";
 import { SoundManager } from "./sound.js";
 import { loadSettings, saveSettings, loadScoreboard, loadStudentBestScore, appendScoreboardEntry } from "./storage.js";
 import { Matchmaker, isSupabaseConfigured } from "./multiplayer.js";
-import { cancelPaymentRequest, createPaymentRequest, getCoinStudent, getPaymentStatus, requestReward, COIN_PRICE, PAYMENT_POLL_MS } from "./coin-api.js";
-import { ALLOW_TEST_NICKNAME, LEADERBOARD_FIRST_BONUS, MIN_WAGER_AMOUNT, finalScoreFor, rewardTiersForDifficulty, scoreMultiplierForDifficulty, singleRewardFor } from "./coin-config.js";
+import { ALLOW_TEST_NICKNAME } from "./runtime-config.js";
 
 const sound = new SoundManager();
 const pressedKeys = new Set();
@@ -55,26 +54,12 @@ const session = {
   opponentReady: false,
   opponentName: "상대방",
   opponentStudentId: "",
-  entryPaid: false,
-  entryToken: "",
-  wagerAmount: 0,
-  opponentWager: 0,
-  wagerPaid: false,
-  opponentWagerPaid: false,
-  wagerToken: "",
-  wagerTrackingToken: "",
-  wagerPaymentAttemptId: "",
-  opponentWagerToken: "",
-  rewardHandled: false,
-  rewardAmount: 0,
-  rewardStatusText: "",
   pendingDifficultyIndex: null,
   myDifficultyVote: null,
   opponentDifficultyVote: null,
   difficultyResolved: false,
   finishing: false,
   finalScore: 0,
-  leaderboardBonus: 0,
   matchCountdownStarted: false,
   itemMode: false,
   itemInventory: [],
@@ -87,10 +72,6 @@ const session = {
 
 let game = null;
 let gameOverRects = [];
-let paymentPollTimer = null;
-let activeEntryTrackingToken = "";
-let entryPaymentAttemptId = "";
-let wagerPaymentPollTimer = null;
 let flowVersion = 0;
 const flowTimers = new Set();
 let fxTextTimer = null;
@@ -103,58 +84,6 @@ let roomJoinTimer = null;
 let matchFoundFxTimer = null;
 let reverseEffectWasActive = false;
 const el = (id) => document.getElementById(id);
-let paymentConfirmationOpen = false;
-
-async function confirmCoinPayment(studentId, amount) {
-  if (paymentConfirmationOpen) return false;
-  paymentConfirmationOpen = true;
-  try {
-    const student = await getCoinStudent(studentId);
-    const coinAmount = Number(amount);
-    const balance = Number(student.balance);
-    if (!Number.isInteger(coinAmount) || coinAmount < 0 || !Number.isFinite(balance)) throw new Error("결제 확인 정보가 올바르지 않습니다.");
-
-    const modal = el("payment-confirm-modal");
-    const approve = el("payment-confirm-approve");
-    const cancel = el("payment-confirm-cancel");
-    const warning = el("payment-confirm-warning");
-    el("payment-confirm-title").textContent = coinAmount === 0 ? "0코인으로 입장하시겠습니까?" : "결제하시겠습니까?";
-    el("payment-confirm-name").textContent = student.name;
-    el("payment-confirm-balance").textContent = `${balance.toLocaleString()}코인`;
-    el("payment-confirm-amount").textContent = `${coinAmount.toLocaleString()}코인`;
-    const insufficient = balance < coinAmount;
-    warning.textContent = insufficient
-      ? "잔액이 부족하여 결제를 진행할 수 없습니다."
-      : coinAmount === 0
-        ? "테스트 기간에는 코인이 차감되지 않습니다."
-        : `결제 후 잔액: ${(balance - coinAmount).toLocaleString()}코인`;
-    approve.textContent = coinAmount === 0 ? "확인하고 입장" : "확인하고 바로 결제";
-    approve.disabled = insufficient;
-    modal.hidden = false;
-
-    return await new Promise((resolve) => {
-      const close = (confirmed) => {
-        modal.hidden = true;
-        approve.removeEventListener("click", onApprove);
-        cancel.removeEventListener("click", onCancel);
-        modal.removeEventListener("click", onBackdrop);
-        document.removeEventListener("keydown", onKeydown);
-        resolve(confirmed);
-      };
-      const onApprove = () => close(true);
-      const onCancel = () => close(false);
-      const onBackdrop = (event) => { if (event.target === modal) close(false); };
-      const onKeydown = (event) => { if (event.key === "Escape") close(false); };
-      approve.addEventListener("click", onApprove);
-      cancel.addEventListener("click", onCancel);
-      modal.addEventListener("click", onBackdrop);
-      document.addEventListener("keydown", onKeydown);
-      (insufficient ? cancel : approve).focus();
-    });
-  } finally {
-    paymentConfirmationOpen = false;
-  }
-}
 
 function clearFlowTimers() {
   flowVersion += 1;
@@ -197,17 +126,9 @@ function scheduleFlow(callback, delay, expectedScreen = session.screen) {
   return timer;
 }
 
-function renderRewardGuide(difficultyIndex) {
-  el("single-reward-guide").querySelector("b").textContent = `싱글 코인 보상 · ×${scoreMultiplierForDifficulty(difficultyIndex)}`;
-  el("single-reward-list").innerHTML = rewardTiersForDifficulty(difficultyIndex)
-    .slice().reverse()
-    .map(({ minScore, coins }) => `<span><em>${minScore.toLocaleString()}점</em><strong>${coins.toLocaleString()}코인</strong></span>`)
-    .join("");
-}
-
 const MENU_SCREENS = new Set([
-  "student", "coin", "mode", "difficulty", "wheel", "instructions",
-  "matching", "room", "ready", "wager", "finished", "result",
+  "student", "mode", "difficulty", "wheel", "instructions",
+  "matching", "room", "ready", "finished", "result",
 ]);
 
 function getFocusableMenuItems(root) {
@@ -421,8 +342,6 @@ function handleOpponentDisconnect() {
   session.reconnectDeadline = performance.now() / 1000 + 10;
   if (session.screen === "playing") {
     triggerGameText("상대 연결 끊김 · 재접속 대기", "bad");
-  } else if (session.screen === "wager") {
-    el("wager-error").textContent = "상대 연결이 끊겼습니다. 10초 동안 재접속을 기다립니다.";
   } else if (session.screen === "difficulty") {
     el("difficulty-vote-status").textContent = "상대 연결 끊김 · 10초 재접속 대기";
   } else if (session.screen === "ready") {
@@ -443,33 +362,12 @@ function handleOpponentReconnect() {
   if (session.screen === "playing") {
     triggerGameText("상대 재접속 완료", "good");
     sound.play("match");
-  } else if (session.screen === "wager") {
-    el("wager-error").textContent = "상대가 다시 연결되었습니다.";
   } else if (session.screen === "ready") {
     el("ready-status").textContent = "상대가 다시 연결되었습니다. 준비 상태를 확인하세요.";
   }
 }
 
 async function cancelDisconnectedMatchBeforeStart() {
-  if (wagerPaymentPollTimer) {
-    clearInterval(wagerPaymentPollTimer);
-    wagerPaymentPollTimer = null;
-  }
-  if (session.wagerTrackingToken) {
-    const token = session.wagerTrackingToken;
-    session.wagerTrackingToken = "";
-    await cancelPaymentRequest(token).catch(() => {});
-  }
-  if (session.wagerPaid && session.wagerAmount > 0) {
-    try {
-      await requestReward({
-        rewardType: "disconnect_refund",
-        gameToken: session.wagerToken,
-      });
-    } catch (error) {
-      console.warn("Disconnect refund pending", error);
-    }
-  }
   matchmaker.leaveRoom();
   session.multiplayer = false;
   session.opponentDisconnected = false;
@@ -566,36 +464,7 @@ function playRecordCelebration() {
 
 // ---------- Screen: student ----------
 
-function showCoinScreen(student) {
-  const name = student.name || session.studentName;
-  const sid = student.student_id || session.studentId;
-  const info = el("coin-student-info");
-  const nameLine = document.createElement("p");
-  const idLine = document.createElement("p");
-  nameLine.className = "coin-student-name";
-  idLine.className = "coin-student-id";
-  nameLine.textContent = name;
-  idLine.textContent = sid;
-  info.replaceChildren(nameLine, idLine);
-  el("coin-price-label").textContent = COIN_PRICE === 0 ? "테스트 참가비: 0코인" : `참가비: ${COIN_PRICE} 코인`;
-  el("coin-status").textContent = COIN_PRICE === 0
-    ? "테스트 모드에서는 실제 코인이 차감되지 않습니다."
-    : "결제 내용을 확인하면 Naplace Coin에서 즉시 차감됩니다.";
-  el("coin-error").textContent = "";
-  const payBtn = el("coin-pay");
-  payBtn.disabled = false;
-  payBtn.textContent = COIN_PRICE === 0 ? "0코인으로 입장" : `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
-  session.screen = "coin";
-  showScreen("screen-coin");
-}
-
 async function initStudentScreen() {
-  if (paymentPollTimer) clearInterval(paymentPollTimer);
-  paymentPollTimer = null;
-  activeEntryTrackingToken = "";
-  entryPaymentAttemptId = "";
-  session.entryPaid = false;
-  session.entryToken = "";
   session.screen = "student";
   showScreen("screen-student");
   el("qr-scan-area").style.display = "none";
@@ -619,18 +488,6 @@ async function loadTopScoreForStudentScreen() {
   }
 }
 
-function hasCurrentEntryAccess() {
-  const testBypass = ALLOW_TEST_NICKNAME && session.studentName === "한교동";
-  return session.entryPaid && (Boolean(session.entryToken) || testBypass);
-}
-
-function requireCurrentEntryAccess() {
-  if (hasCurrentEntryAccess()) return true;
-  showCoinScreen({ student_id: session.studentId, name: session.studentName });
-  el("coin-error").textContent = "새 게임을 시작하려면 참가비 결제가 필요합니다.";
-  return false;
-}
-
 // Manual fallback
 el("student-next").addEventListener("click", submitStudent);
 el("student-id").addEventListener("keydown", (e) => {
@@ -650,105 +507,9 @@ function submitStudent() {
   el("student-error").textContent = "";
   session.studentId = id;
   session.studentName = name;
-  session.entryPaid = false;
-  session.entryToken = "";
-  if (ALLOW_TEST_NICKNAME && name === "한교동") {
-    session.entryPaid = true;
-    session.screen = "mode";
-    showScreen("screen-mode");
-    return;
-  }
-  showCoinScreen({ student_id: id, name });
+  session.screen = "mode";
+  showScreen("screen-mode");
 }
-
-// ---------- Screen: coin ----------
-el("coin-pay").addEventListener("click", async () => {
-  clickSound();
-  const payBtn = el("coin-pay");
-  payBtn.disabled = true;
-  payBtn.textContent = "잔액 확인 중...";
-  el("coin-error").textContent = "";
-  try {
-    const confirmed = await confirmCoinPayment(session.studentId, COIN_PRICE);
-    if (!confirmed) {
-      payBtn.disabled = false;
-      payBtn.textContent = COIN_PRICE === 0 ? "0코인으로 입장" : `${COIN_PRICE.toLocaleString()}코인 바로 결제`;
-      el("coin-status").textContent = "결제가 취소되었습니다. 원할 때 다시 요청할 수 있습니다.";
-      return;
-    }
-    payBtn.textContent = "처리 중...";
-    entryPaymentAttemptId ||= crypto.randomUUID();
-    const request = await createPaymentRequest(session.studentId, COIN_PRICE, "entry", "", entryPaymentAttemptId);
-    if (request.status === "approved") {
-      if (!request.game_token) throw new Error("승인 토큰을 받지 못했습니다.");
-      session.entryPaid = true;
-      session.entryToken = request.game_token;
-      entryPaymentAttemptId = "";
-      el("coin-status").textContent = COIN_PRICE === 0
-        ? "계정 확인 완료 · 코인 차감 없이 입장합니다."
-        : request.duplicate ? "이미 완료된 결제를 확인했습니다." : "결제가 즉시 완료되었습니다.";
-      session.screen = "mode";
-      showScreen("screen-mode");
-      return;
-    }
-    payBtn.textContent = "승인 대기 중...";
-    activeEntryTrackingToken = request.tracking_token || "";
-    el("coin-status").textContent = `${session.studentName}님의 결제 승인을 기다리는 중입니다.`;
-    const check = async () => {
-      const result = await getPaymentStatus(request.tracking_token);
-      if (result.status === "approved") {
-        clearInterval(paymentPollTimer);
-        paymentPollTimer = null;
-        if (session.screen !== "coin") return;
-        session.entryPaid = true;
-        session.entryToken = result.game_token || "";
-        activeEntryTrackingToken = "";
-        if (!session.entryToken) throw new Error("승인 토큰을 받지 못했습니다.");
-        el("coin-status").textContent = "결제가 승인되었습니다. 모드를 선택하세요.";
-        session.screen = "mode";
-        showScreen("screen-mode");
-      } else if (["rejected", "expired", "canceled"].includes(result.status)) {
-        clearInterval(paymentPollTimer);
-        paymentPollTimer = null;
-        if (session.screen === "coin") handleEntryPaymentError(new Error(`결제 요청이 ${result.status === "rejected" ? "거절" : "종료"}되었습니다.`));
-      }
-    };
-    paymentPollTimer = setInterval(() => check().catch(handleEntryPollWarning), PAYMENT_POLL_MS);
-    await check().catch(handleEntryPollWarning);
-  } catch (err) {
-    if (["payment_failed", "payment_conflict"].includes(err.code)) entryPaymentAttemptId = "";
-    handleEntryPaymentError(err);
-  }
-});
-
-function handleEntryPaymentError(err) {
-  if (paymentPollTimer) clearInterval(paymentPollTimer);
-  paymentPollTimer = null;
-  activeEntryTrackingToken = "";
-  el("coin-error").textContent = err.message || "결제 실패";
-  el("coin-status").textContent = "결제가 완료되지 않았습니다. 아래 버튼으로 다시 시도할 수 있습니다.";
-  el("coin-pay").disabled = false;
-  el("coin-pay").textContent = "바로 결제 다시 시도";
-}
-
-function handleEntryPollWarning(err) {
-  if (/토큰.*(만료|올바르지|서명)/.test(err.message || "")) {
-    handleEntryPaymentError(new Error("결제 확인 시간이 만료되었습니다. 다시 요청해주세요."));
-    return;
-  }
-  el("coin-error").textContent = `상태 확인 재시도 중: ${err.message || "일시적인 연결 오류"}`;
-  el("coin-status").textContent = "기존 결제 요청의 승인 상태를 계속 확인하고 있습니다.";
-}
-
-el("coin-back").addEventListener("click", async () => {
-  clickSound();
-  if (activeEntryTrackingToken) {
-    const token = activeEntryTrackingToken;
-    activeEntryTrackingToken = "";
-    await cancelPaymentRequest(token).catch(() => {});
-  }
-  await initStudentScreen();
-});
 
 initStudentScreen();
 
@@ -766,14 +527,9 @@ function beginSoloSetup() {
   session.bestSessionScore = null;
   session.currentScoreboardId = null;
   session.recordSaved = false;
-  session.rewardHandled = false;
-  session.rewardAmount = 0;
-  session.rewardStatusText = "";
   session.finishing = false;
   session.finalScore = 0;
-  session.leaderboardBonus = 0;
   session.pendingDifficultyIndex = null;
-  el("finished-reward").textContent = "";
   remoteState = null;
   renderDifficultyScreen();
   session.screen = "difficulty";
@@ -782,13 +538,11 @@ function beginSoloSetup() {
 
 el("mode-single").addEventListener("click", () => {
   clickSound();
-  if (!requireCurrentEntryAccess()) return;
   beginSoloSetup();
 });
 
 el("mode-multiplayer").addEventListener("click", () => {
   clickSound();
-  if (!requireCurrentEntryAccess()) return;
   clearFlowTimers();
   matchmaker.leaveRoom();
   prepareMultiplayerSession();
@@ -945,7 +699,7 @@ el("mode-back").addEventListener("click", async () => {
 function renderDifficultyScreen() {
   el("difficulty-list-status").textContent = session.mode === "multi"
     ? "각자 하나씩 투표합니다. 의견이 다르면 돌림판으로 결정합니다."
-    : "선택한 난이도의 점수별 코인 보상을 확인하세요.";
+    : "난이도를 선택하고 점수 배율을 확인하세요.";
   el("difficulty-back").textContent = session.mode === "multi" ? "매칭 취소" : "모드 선택";
   el("difficulty-vote-status").textContent = session.myDifficultyVote === null ? "" : "내 투표 완료 · 상대 투표 대기 중";
   el("difficulty-confirm").disabled = session.pendingDifficultyIndex === null || session.myDifficultyVote !== null;
@@ -965,7 +719,6 @@ function renderDifficultyScreen() {
   });
   if (session.pendingDifficultyIndex === null) {
     el("difficulty-score-multiplier").textContent = "×—";
-    renderDifficultyRewardTable();
   } else {
     renderDifficultyDetail(session.pendingDifficultyIndex);
   }
@@ -973,16 +726,6 @@ function renderDifficultyScreen() {
 
 function renderDifficultyDetail(index) {
   el("difficulty-score-multiplier").textContent = `×${scoreMultiplierForDifficulty(index)}`;
-  renderDifficultyRewardTable();
-}
-
-function renderDifficultyRewardTable() {
-  const tierRows = rewardTiersForDifficulty()
-    .slice().reverse()
-    .map(({ minScore, coins }) => `<span><em>${minScore.toLocaleString()}점</em><strong>${coins.toLocaleString()}코인</strong></span>`)
-    .join("");
-  const topRow = `<span class="reward-top1"><em>전체 1등</em><strong>+${LEADERBOARD_FIRST_BONUS.toLocaleString()}코인</strong></span>`;
-  el("difficulty-reward-list").innerHTML = tierRows + topRow;
 }
 
 function previewDifficulty(index) {
@@ -1044,7 +787,6 @@ function finalizeDifficulty(index) {
   session.difficultyResolved = true;
   const [, label, minNumber, maxNumber] = DIFFICULTIES[index];
   el("instructions-subtitle").textContent = `${session.studentName} / ${session.totalRuns}회 플레이 / ${label} ${minNumber}~${maxNumber}`;
-  renderRewardGuide(index);
   if (session.mode === "multi") showReadyScreen();
   else showInstructions();
 }
@@ -1090,8 +832,6 @@ el("instructions-sensitivity").addEventListener("click", () => { clickSound(); s
 el("instructions-difficulty").addEventListener("click", () => { clickSound(); session.screen = "difficulty"; showScreen("screen-difficulty"); });
 
 function prepareMultiplayerSession() {
-  if (wagerPaymentPollTimer) clearInterval(wagerPaymentPollTimer);
-  wagerPaymentPollTimer = null;
   session.mode = "multi";
   session.totalRuns = 1;
   session.runNumber = 0;
@@ -1106,174 +846,18 @@ function prepareMultiplayerSession() {
   session.myReady = false;
   session.opponentReady = false;
   session.matchCountdownStarted = false;
-  session.wagerAmount = 0;
-  session.opponentWager = 0;
-  session.wagerPaid = false;
-  session.opponentWagerPaid = false;
-  session.wagerToken = "";
-  session.wagerTrackingToken = "";
-  session.wagerPaymentAttemptId = "";
-  session.opponentWagerToken = "";
-  session.rewardHandled = false;
-  session.rewardAmount = 0;
-  session.rewardStatusText = "";
   session.pendingDifficultyIndex = null;
   session.myDifficultyVote = null;
   session.opponentDifficultyVote = null;
   session.difficultyResolved = false;
   session.finishing = false;
   session.finalScore = 0;
-  session.leaderboardBonus = 0;
   session.itemMode = false;
   session.opponentDisconnected = false;
   session.reconnectDeadline = 0;
   resetItemBattle();
   remoteState = null;
 }
-
-function showWagerScreen() {
-  el("wager-my-name").textContent = session.studentName;
-  el("wager-opponent-name").textContent = session.opponentName;
-  el("wager-amount").disabled = session.wagerPaid || COIN_PRICE === 0;
-  if (COIN_PRICE === 0) {
-    el("wager-amount").value = "0";
-  } else if (!session.wagerPaid && Number(el("wager-amount").value) < MIN_WAGER_AMOUNT) {
-    el("wager-amount").value = String(MIN_WAGER_AMOUNT);
-  }
-  el("wager-submit").disabled = session.wagerPaid;
-  const displayAmount = Number(el("wager-amount").value) || 0;
-  el("wager-status").textContent = session.wagerPaid
-    ? "내 배팅 확정 완료"
-    : COIN_PRICE === 0
-      ? "0코인 배팅을 확정하세요."
-      : `최소 ${MIN_WAGER_AMOUNT.toLocaleString()}코인부터 배팅을 확정하세요.`;
-  el("wager-submit").textContent = session.wagerPaid ? "배팅 확정 완료" : `${displayAmount.toLocaleString()}코인 배팅 확정`;
-  el("wager-opponent-status").textContent = session.opponentWagerPaid
-    ? `상대 배팅: ${session.opponentWager}코인 · 확정 완료`
-    : "상대 배팅 확정 대기 중";
-  el("wager-error").textContent = "";
-  session.screen = "wager";
-  showScreen("screen-wager");
-}
-
-function maybeAdvanceFromWager() {
-  if (session.screen !== "wager") return;
-  if (!session.wagerPaid || !session.opponentWagerPaid || !session.wagerToken || !session.opponentWagerToken) return;
-  el("wager-status").textContent = `총 배팅 ${session.wagerAmount + session.opponentWager}코인 확정!`;
-  if (!flowTimers.size) scheduleFlow(showMatchedDifficulty, 700, "wager");
-}
-
-el("wager-amount").addEventListener("input", () => {
-  if (session.wagerPaid || COIN_PRICE === 0) return;
-  const amount = Number(el("wager-amount").value) || 0;
-  el("wager-submit").textContent = `${amount.toLocaleString()}코인 배팅 확정`;
-});
-
-el("wager-submit").addEventListener("click", async () => {
-  clickSound();
-  const amount = Number(el("wager-amount").value);
-  if (COIN_PRICE === 0 && amount !== 0) {
-    el("wager-error").textContent = "베타테스트 배팅은 0코인으로만 진행됩니다.";
-    return;
-  }
-  if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(amount)) {
-    el("wager-error").textContent = "0 이상의 정수 금액을 입력하세요.";
-    return;
-  }
-  if (COIN_PRICE > 0 && amount < MIN_WAGER_AMOUNT) {
-    el("wager-error").textContent = `배팅 금액은 최소 ${MIN_WAGER_AMOUNT.toLocaleString()}코인부터 가능합니다.`;
-    return;
-  }
-  el("wager-submit").disabled = true;
-  el("wager-amount").disabled = true;
-  el("wager-status").textContent = "잔액 확인 중...";
-  el("wager-error").textContent = "";
-  try {
-    const confirmed = await confirmCoinPayment(session.studentId, amount);
-    if (!confirmed) {
-      el("wager-submit").disabled = false;
-      el("wager-amount").disabled = COIN_PRICE === 0;
-      el("wager-status").textContent = "결제가 취소되었습니다. 금액을 확인하고 다시 요청하세요.";
-      return;
-    }
-    session.wagerAmount = amount;
-    matchmaker.sendCommand("wager", { amount });
-    el("wager-status").textContent = amount === 0 ? "0코인 배팅 확인 중..." : "배팅 금액 즉시 결제 중...";
-    session.wagerPaymentAttemptId ||= crypto.randomUUID();
-    const request = await createPaymentRequest(session.studentId, amount, "wager", matchmaker.roomId, session.wagerPaymentAttemptId);
-    session.wagerTrackingToken = request.tracking_token || "";
-    const approveWager = (gameToken) => {
-      if (!gameToken) throw new Error("배팅 승인 토큰을 받지 못했습니다.");
-      session.wagerToken = gameToken;
-      session.wagerPaymentAttemptId = "";
-      session.wagerTrackingToken = "";
-      session.wagerPaid = true;
-      if (session.screen !== "wager" || !matchmaker.connected()) return;
-      sound.play("coin");
-      matchmaker.sendCommand("wager_paid", { amount, gameToken });
-      showWagerScreen();
-      maybeAdvanceFromWager();
-    };
-    if (request.status === "approved") {
-      approveWager(request.game_token);
-      return;
-    }
-    el("wager-status").textContent = `${amount}코인 승인 대기 중...`;
-    const handleWagerPollError = (error) => {
-      const terminal = error.terminal || /토큰.*(만료|올바르지|서명)/.test(error.message || "");
-      if (!terminal) {
-        el("wager-error").textContent = `상태 확인 재시도 중: ${error.message || "일시적인 연결 오류"}`;
-        el("wager-status").textContent = "기존 배팅 요청의 승인 상태를 계속 확인하고 있습니다.";
-        return;
-      }
-      if (wagerPaymentPollTimer) clearInterval(wagerPaymentPollTimer);
-      wagerPaymentPollTimer = null;
-      session.wagerTrackingToken = "";
-      el("wager-error").textContent = error.message;
-      el("wager-status").textContent = "승인 대기 종료 · 다시 요청 가능";
-      el("wager-submit").disabled = false;
-      el("wager-amount").disabled = COIN_PRICE === 0;
-      el("wager-submit").textContent = "배팅 결제 다시 요청";
-    };
-    const poll = async () => {
-      const result = await getPaymentStatus(request.tracking_token);
-      if (result.status === "approved") {
-        if (wagerPaymentPollTimer) clearInterval(wagerPaymentPollTimer);
-        wagerPaymentPollTimer = null;
-        approveWager(result.game_token);
-      } else if (["rejected", "expired", "canceled"].includes(result.status)) {
-        if (wagerPaymentPollTimer) clearInterval(wagerPaymentPollTimer);
-        wagerPaymentPollTimer = null;
-        const error = new Error("배팅 결제가 승인되지 않았습니다. 금액을 확인하고 다시 요청하세요.");
-        error.terminal = true;
-        throw error;
-      }
-    };
-    wagerPaymentPollTimer = setInterval(() => poll().catch(handleWagerPollError), PAYMENT_POLL_MS);
-    await poll().catch(handleWagerPollError);
-  } catch (error) {
-    if (["payment_failed", "payment_conflict"].includes(error.code)) session.wagerPaymentAttemptId = "";
-    el("wager-error").textContent = error.message || "배팅 요청에 실패했습니다.";
-    el("wager-submit").disabled = false;
-    el("wager-amount").disabled = COIN_PRICE === 0;
-  }
-});
-
-el("wager-cancel").addEventListener("click", async () => {
-  clickSound();
-  if (wagerPaymentPollTimer) clearInterval(wagerPaymentPollTimer);
-  wagerPaymentPollTimer = null;
-  if (session.wagerTrackingToken) {
-    const token = session.wagerTrackingToken;
-    session.wagerTrackingToken = "";
-    await cancelPaymentRequest(token).catch(() => {});
-  }
-  clearFlowTimers();
-  matchmaker.leaveRoom();
-  session.multiplayer = false;
-  session.screen = "mode";
-  showScreen("screen-mode");
-});
 
 function showMatchedDifficulty() {
   renderDifficultyScreen();
@@ -1308,16 +892,6 @@ function onMultiplayerMatched(opponent) {
         el("ready-status").textContent = "상대방 준비 완료! " + (session.myReady ? "게임 시작 중..." : "당신도 준비하세요.");
       }
       checkBothReady();
-    } else if (cmd === "wager") {
-      session.opponentWager = Number(data.amount) || 0;
-      if (session.screen === "wager") showWagerScreen();
-    } else if (cmd === "wager_paid") {
-      session.opponentWager = Number(data.amount) || session.opponentWager;
-      session.opponentWagerToken = String(data.gameToken || "");
-      session.opponentWagerPaid = Boolean(session.opponentWagerToken);
-      sound.play("coin");
-      if (session.screen === "wager") showWagerScreen();
-      maybeAdvanceFromWager();
     } else if (cmd === "item_attack") {
       receiveIncomingItem(data);
     }
@@ -1327,7 +901,7 @@ function onMultiplayerMatched(opponent) {
   session.opponentName = opponent?.name || "상대방";
   session.opponentStudentId = "";
   session.itemMode = Boolean(opponent?.roomOptions?.itemMode);
-  playMatchFoundTransition(showWagerScreen);
+  playMatchFoundTransition(showMatchedDifficulty);
 }
 
 function startMatching() {
@@ -1369,16 +943,6 @@ function startMatching() {
           el("ready-status").textContent = "상대방 준비 완료! " + (session.myReady ? "게임 시작 중..." : "당신도 준비하세요.");
         }
         checkBothReady();
-      } else if (cmd === "wager") {
-        session.opponentWager = Number(data.amount) || 0;
-        if (session.screen === "wager") showWagerScreen();
-      } else if (cmd === "wager_paid") {
-        session.opponentWager = Number(data.amount) || session.opponentWager;
-        session.opponentWagerToken = String(data.gameToken || "");
-        session.opponentWagerPaid = Boolean(session.opponentWagerToken);
-        sound.play("coin");
-        if (session.screen === "wager") showWagerScreen();
-        maybeAdvanceFromWager();
       } else if (cmd === "item_attack") {
         receiveIncomingItem(data);
       }
@@ -1391,7 +955,7 @@ function startMatching() {
     el("matching-found").style.display = "block";
     el("match-my-name").textContent = session.studentName;
     el("match-opponent-name").textContent = session.opponentName;
-    playMatchFoundTransition(showWagerScreen);
+    playMatchFoundTransition(showMatchedDifficulty);
   }, session.studentName).catch((error) => {
     el("matching-waiting").style.display = "none";
     el("matching-found").style.display = "block";
@@ -1811,7 +1375,6 @@ function startNextRun() {
   pressedKeys.clear();
   game.pressed = pressedKeys;
   session.screen = "playing";
-  el("single-reward-guide").classList.toggle("visible", session.mode === "single");
   el("item-battle-ui").classList.toggle("visible", session.multiplayer && session.itemMode);
   el("connection-status").classList.remove("visible");
   session.opponentDisconnected = false;
@@ -1832,7 +1395,6 @@ function recordRunScore() {
 async function finishSession() {
   if (session.finishing) return;
   session.finishing = true;
-  session.entryPaid = false;
   sound.stopMusic();
   if (game && !game.runRecorded) recordRunScore();
   if (session.bestSessionScore === null && game) session.bestSessionScore = game.score;
@@ -1842,8 +1404,6 @@ async function finishSession() {
   const [, label] = DIFFICULTIES[session.difficultyIndex];
   el("result-score").textContent = session.finalScore.toLocaleString();
   el("result-difficulty").textContent = label;
-  el("result-coins").textContent = "집계 중...";
-  el("result-reward-status").textContent = "코인 보상을 계산하고 있습니다.";
   const scoreCalculation = `원점수 ${rawScore.toLocaleString()} × 난이도 ${scoreMultiplier} = ${session.finalScore.toLocaleString()}점`;
   el("result-detail").textContent = session.mode === "multi"
     ? `${session.matchDetail || "대전 결과"} · ${scoreCalculation}`
@@ -1858,7 +1418,6 @@ async function finishSession() {
   showScreen("screen-result");
 
   const rankingExcluded = isRankingExcludedName(session.studentName);
-  session.leaderboardBonus = 0;
   session.personalBest = false;
 
   if (!session.recordSaved && !rankingExcluded) {
@@ -1877,9 +1436,8 @@ async function finishSession() {
         difficulty: label,
         max_number: maxNumber,
         played_at: playedAt,
-      }, session.entryToken);
+      });
       session.currentScoreboardId = saved.scoreboard_id || null;
-      session.leaderboardBonus = Number(saved.leaderboard_bonus) || 0;
     } catch (error) {
       session.currentScoreboardId = null;
       el("result-detail").textContent += ` · 랭킹 저장 실패: ${error.message}`;
@@ -1890,73 +1448,11 @@ async function finishSession() {
     session.recordSaved = true;
     el("result-detail").textContent += " · 테스트 닉네임: 랭킹 미등록";
   }
-  if (session.leaderboardBonus > 0) {
-    el("result-detail").textContent += ` · NEW 1위! 추가 ${session.leaderboardBonus.toLocaleString()}코인`;
-    playRecordCelebration();
-  } else if (session.personalBest) {
+  if (session.personalBest) {
     el("result-detail").textContent += " · NEW RECORD! 개인 최고 기록 경신";
     playRecordCelebration();
   }
-  await settleCoinResult();
-  const resultCoins = el("result-coins");
-  resultCoins.textContent = `${session.rewardAmount.toLocaleString()}코인`;
-  restartFxClass(resultCoins, "coin-total-reveal", 1600);
-  if (session.rewardAmount > 0) sound.play("coin");
-  el("result-reward-status").textContent = session.rewardStatusText;
   el("result-scoreboard").disabled = false;
-}
-
-async function settleCoinResult() {
-  if (session.rewardHandled) return;
-  session.rewardHandled = true;
-  if (isRankingExcludedName(session.studentName)) {
-    session.rewardAmount = 0;
-    session.rewardStatusText = "테스트 닉네임은 코인 정산에서 제외됩니다.";
-    return;
-  }
-  const score = session.finalScore;
-  let amount = 0;
-  let requestPayload = null;
-
-  if (session.mode === "single") {
-    amount = singleRewardFor(score);
-    requestPayload = {
-      rewardType: "single",
-      gameToken: session.entryToken,
-      finalScore: score,
-    };
-  } else if (session.matchOutcome === "win") {
-    amount = session.wagerAmount + session.opponentWager;
-    requestPayload = { rewardType: "multi_win", gameToken: session.wagerToken, opponentGameToken: session.opponentWagerToken };
-  } else if (session.matchOutcome === "draw") {
-    amount = session.wagerAmount;
-    requestPayload = { rewardType: "multi_draw", gameToken: session.wagerToken, opponentGameToken: session.opponentWagerToken };
-  }
-
-  if (session.leaderboardBonus > 0) {
-    amount += session.leaderboardBonus;
-  }
-
-  if (amount <= 0) {
-    session.rewardAmount = 0;
-    session.rewardStatusText = session.mode === "single"
-      ? "임시 보상 기준에 도달하지 못했습니다."
-      : session.matchOutcome === "lose" ? "패배하여 배팅 보상이 없습니다." : "정산할 코인이 없습니다.";
-    return;
-  }
-
-  session.rewardAmount = amount;
-  session.rewardStatusText = `${amount}코인 정산 요청 중...`;
-  try {
-    if (!requestPayload?.gameToken) throw new Error("검증된 결제 토큰이 없어 정산할 수 없습니다.");
-    const result = await requestReward(requestPayload);
-    session.rewardAmount = Number(result.amount) || 0;
-    session.rewardStatusText = result.mock
-      ? `${session.rewardAmount}코인 검증된 테스트 정산 완료 (실제 지급 없음)`
-      : `${session.rewardAmount}코인 지급 완료`;
-  } catch (error) {
-    session.rewardStatusText = `${amount}코인 정산 대기: ${error.message}`;
-  }
 }
 
 el("result-scoreboard").addEventListener("click", async () => {
@@ -1965,7 +1461,6 @@ el("result-scoreboard").addEventListener("click", async () => {
   session.screen = "finished";
   showScreen("screen-finished");
   el("finished-restart").textContent = "처음으로";
-  el("finished-reward").textContent = session.rewardStatusText;
   el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
   await showFinishedScreen();
 });
@@ -1976,7 +1471,6 @@ el("difficulty-scoreboard").addEventListener("click", async () => {
   session.screen = "finished";
   showScreen("screen-finished");
   el("finished-restart").textContent = "돌아가기";
-  el("finished-reward").textContent = "";
   el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
   await showFinishedScreen();
 });
@@ -1987,7 +1481,6 @@ el("student-top1").addEventListener("click", async () => {
   session.screen = "finished";
   showScreen("screen-finished");
   el("finished-restart").textContent = "돌아가기";
-  el("finished-reward").textContent = "";
   el("scoreboard-body").innerHTML = "<tr><td colspan='5' style='text-align:center;color:#7a7264;'>불러오는 중...</td></tr>";
   await showFinishedScreen();
 });
@@ -2075,13 +1568,6 @@ el("finished-restart").addEventListener("click", () => {
   session.matchDetail = "";
   session.currentScoreboardId = null;
   session.musicStoppedOnEnd = false;
-  session.rewardHandled = false;
-  session.entryPaid = false;
-  session.entryToken = "";
-  session.wagerToken = "";
-  session.wagerTrackingToken = "";
-  session.wagerPaymentAttemptId = "";
-  session.opponentWagerToken = "";
   remoteState = null;
   el("student-id").value = "";
   el("student-name").value = "";
@@ -2187,16 +1673,8 @@ window.addEventListener("keydown", (event) => {
     if (key === "escape") el("room-cancel").click();
     return;
   }
-  if (session.screen === "wager") {
-    if (key === "escape") el("wager-cancel").click();
-    return;
-  }
   if (session.screen === "ready") {
     if (key === "escape") el("ready-cancel").click();
-    return;
-  }
-  if (session.screen === "coin") {
-    if (key === "escape") el("coin-back").click();
     return;
   }
   if (session.screen === "instructions") {

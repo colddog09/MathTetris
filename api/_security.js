@@ -1,64 +1,4 @@
-const crypto = require("crypto");
-
 const buckets = new Map();
-
-function signingSecret() {
-  const secret = process.env.GAME_SIGNING_SECRET || "";
-  if (secret.length < 32) throw new Error("GAME_SIGNING_SECRET은 32자 이상이어야 합니다.");
-  return secret;
-}
-
-function encode(value) {
-  return Buffer.from(JSON.stringify(value)).toString("base64url");
-}
-
-function signPayload(payload, ttlSeconds) {
-  const now = Math.floor(Date.now() / 1000);
-  const body = encode({ ...payload, iat: now, exp: now + ttlSeconds });
-  const signature = crypto.createHmac("sha256", signingSecret()).update(body).digest("base64url");
-  return `${body}.${signature}`;
-}
-
-function verifyPayload(token, expectedType) {
-  const [body, providedSignature] = String(token || "").split(".");
-  if (!body || !providedSignature) throw new Error("보안 토큰이 올바르지 않습니다.");
-  const expectedSignature = crypto.createHmac("sha256", signingSecret()).update(body).digest("base64url");
-  const left = Buffer.from(providedSignature);
-  const right = Buffer.from(expectedSignature);
-  if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) throw new Error("보안 토큰 서명이 올바르지 않습니다.");
-  let payload;
-  try { payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")); } catch { throw new Error("보안 토큰을 해석할 수 없습니다."); }
-  if (payload.typ !== expectedType) throw new Error("보안 토큰 종류가 올바르지 않습니다.");
-  if (!Number.isFinite(payload.exp) || payload.exp < Math.floor(Date.now() / 1000)) throw new Error("보안 토큰이 만료되었습니다.");
-  return payload;
-}
-
-function issueTrackingToken({ requestId, studentId, amount, purpose, roomId = "" }) {
-  return signPayload({ typ: "payment", requestId: String(requestId), studentId: String(studentId), amount, purpose, roomId }, 5 * 60);
-}
-
-function stableGameId({ requestId, studentId, purpose, roomId = "" }) {
-  const bytes = crypto.createHmac("sha256", signingSecret())
-    .update(`${purpose}:${requestId}:${studentId}:${roomId}`)
-    .digest()
-    .subarray(0, 16);
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = bytes.toString("hex");
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-function issueGameToken({ requestId, studentId, amount, purpose, roomId = "" }) {
-  return signPayload({
-    typ: "game",
-    jti: stableGameId({ requestId, studentId, purpose, roomId }),
-    paymentRequestId: String(requestId),
-    studentId: String(studentId),
-    amount,
-    purpose,
-    roomId,
-  }, 6 * 60 * 60);
-}
 
 function clientIp(req) {
   return String(req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown").split(",")[0].trim();
@@ -141,24 +81,9 @@ function safeString(value, maxLength) {
   return result;
 }
 
-function paymentDetails(data = {}) {
-  const nested = data.payment_request || data.request || data.data || {};
-  const student = data.student || nested.student || {};
-  return {
-    requestId: data.request_id ?? data.id ?? nested.request_id ?? nested.id,
-    studentId: data.student_id ?? nested.student_id ?? student.student_id ?? student.id,
-    amount: data.amount ?? nested.amount,
-    status: String(data.status ?? nested.status ?? "").toLowerCase(),
-  };
-}
-
 module.exports = {
   enforceJsonRequest,
   enforceRateLimit,
   enforceSameOrigin,
-  issueGameToken,
-  issueTrackingToken,
-  paymentDetails,
   safeString,
-  verifyPayload,
 };

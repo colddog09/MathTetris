@@ -131,7 +131,6 @@ export const SFX_NOTES = {
   tickFinal: [[1180, 0.055]],
   tier: [[660, 0.055], [880, 0.055], [1100, 0.09]],
   match: [[440, 0.06], [660, 0.06], [880, 0.1]],
-  coin: [[1040, 0.045], [1320, 0.06]],
   ready: [[520, 0.07]],
   start: [[780, 0.06], [1040, 0.12]],
   lead: [[700, 0.045], [920, 0.07]],
@@ -172,3 +171,13 @@ export const DIFFICULTIES = [
 ];
 
 export const SEED_SCOREBOARD = [];
+
+export const DIFFICULTY_SCORE_MULTIPLIERS = [0.5, 0.75, 1, 1.3, 1.8];
+
+export function scoreMultiplierForDifficulty(difficultyIndex) {
+  return DIFFICULTY_SCORE_MULTIPLIERS[difficultyIndex] || 1;
+}
+
+export function finalScoreFor(rawScore, difficultyIndex) {
+  return Math.round(rawScore * scoreMultiplierForDifficulty(difficultyIndex));
+}

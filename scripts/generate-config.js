@@ -14,22 +14,10 @@ const content = `export const SUPABASE_URL = ${JSON.stringify(url)};\nexport con
 fs.writeFileSync(outPath, content);
 console.log(`supabase-config.js generated at ${outPath}`);
 
-const entryCoinPrice = Number(process.env.ENTRY_COIN_PRICE ?? 0);
-if (!Number.isInteger(entryCoinPrice) || entryCoinPrice < 0) {
-  console.error("ENTRY_COIN_PRICE는 0 이상의 정수여야 합니다.");
-  process.exit(1);
-}
-const minWagerCoins = Number(process.env.MIN_WAGER_COINS ?? 100);
-if (!Number.isInteger(minWagerCoins) || minWagerCoins < 0) {
-  console.error("MIN_WAGER_COINS는 0 이상의 정수여야 합니다.");
-  process.exit(1);
-}
 const runtimePath = path.join(__dirname, "..", "js", "runtime-config.js");
 const allowTestNickname = process.env.ALLOW_TEST_NICKNAME === "true";
 fs.writeFileSync(
   runtimePath,
-  `export const ENTRY_COIN_PRICE = ${entryCoinPrice};\n`
-  + `export const MIN_WAGER_COINS = ${minWagerCoins};\n`
-  + `export const ALLOW_TEST_NICKNAME = ${allowTestNickname};\n`,
+  `export const ALLOW_TEST_NICKNAME = ${allowTestNickname};\n`,
 );
 console.log(`runtime-config.js generated at ${runtimePath}`);

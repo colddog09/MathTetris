@@ -68,12 +68,12 @@ export async function loadStudentBestScore(studentId) {
   return Math.max(...rows.map((row) => Number(row.best_score) || 0));
 }
 
-export async function appendScoreboardEntry(entry, gameToken) {
+export async function appendScoreboardEntry(entry) {
   if (getSupabase()) {
     const response = await fetch("/api/scoreboard", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entry, gameToken }),
+      body: JSON.stringify({ entry }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.message || "스코어보드 저장에 실패했습니다.");

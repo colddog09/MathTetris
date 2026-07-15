@@ -32,23 +32,6 @@
     </div>
   </section>
 
-  <section id="screen-coin" class="screen card-screen">
-    <div class="card">
-      <h1>NAPLACE COIN 결제</h1>
-      <div id="coin-student-info" class="coin-info-box"></div>
-      <p id="coin-price-label" class="subtitle"></p>
-      <p id="coin-status" class="payment-status"></p>
-      <p id="coin-error" class="error"></p>
-      <a class="coin-signup-link" href="https://naplace-coin.vercel.app/signup" target="_blank" rel="noopener noreferrer">
-        Naplace Coin 계정이 없나요? <b>계정 생성하러 가기 ↗</b>
-      </a>
-      <div class="button-row" style="margin-top:16px;">
-        <button id="coin-back" class="btn">정보 수정</button>
-        <button id="coin-pay" class="btn primary">0코인으로 입장</button>
-      </div>
-    </div>
-  </section>
-
   <section id="screen-mode" class="screen card-screen">
     <div class="card">
       <h1>MODE</h1>
@@ -80,11 +63,9 @@
         <div id="difficulty-detail" class="difficulty-detail">
           <h2>점수 배율</h2>
           <strong id="difficulty-score-multiplier" class="difficulty-score-multiplier">×—</strong>
-          <h3>최종 점수 기준표</h3>
-          <div id="difficulty-reward-list" class="difficulty-rewards"></div>
         </div>
       </div>
-      <p id="difficulty-vote-status" class="payment-status"></p>
+      <p id="difficulty-vote-status" class="flow-status"></p>
       <div class="button-row">
         <button id="difficulty-back" class="btn">모드 선택</button>
         <button id="difficulty-confirm" class="btn primary" disabled>이 난이도로 확정</button>
@@ -254,23 +235,6 @@
     </div>
   </section>
 
-  <section id="screen-wager" class="screen card-screen">
-    <div class="card">
-      <h1>MATCH BET</h1>
-      <p class="match-vs"><span id="wager-my-name"></span> <span class="vs-text">VS</span> <span id="wager-opponent-name"></span></p>
-      <p class="hint">최소 100코인부터 배팅할 수 있습니다. 양쪽이 확인하면 난이도 선택으로 넘어갑니다.</p>
-      <label>내 배팅 금액</label>
-      <input id="wager-amount" type="number" min="100" step="1" value="100">
-      <p id="wager-opponent-status" class="hint">상대 배팅 입력 대기 중</p>
-      <p id="wager-status" class="payment-status"></p>
-      <p id="wager-error" class="error"></p>
-      <div class="button-row">
-        <button id="wager-cancel" class="btn">매칭 취소</button>
-        <button id="wager-submit" class="btn primary">100코인 배팅 확정</button>
-      </div>
-    </div>
-  </section>
-
   <section id="screen-sensitivity" class="screen card-screen">
     <div class="card wide">
       <h1>SENSITIVITY</h1>
@@ -296,10 +260,6 @@
         <canvas id="opponent-canvas"></canvas>
       </div>
     </div>
-    <aside id="single-reward-guide" aria-label="싱글 플레이 코인 보상표">
-      <b>싱글 코인 보상</b>
-      <div id="single-reward-list"></div>
-    </aside>
     <aside id="item-battle-ui" aria-label="아이템 슬롯">
       <div class="item-battle-title"><b>ITEM BATTLE</b><span>올소수 줄로 획득</span></div>
       <div class="item-slots">
@@ -340,7 +300,6 @@
     <div class="card wide">
       <h1>SCOREBOARD</h1>
       <p id="finished-subtitle" class="subtitle"></p>
-      <p id="finished-reward" class="reward-result"></p>
       <table id="scoreboard-table">
         <thead><tr><th>순위</th><th>학번</th><th>이름</th><th>점수</th><th>난이도</th></tr></thead>
         <tbody id="scoreboard-body"></tbody>
@@ -369,30 +328,11 @@
       </div>
       <div class="result-summary-grid">
         <div><span>난이도</span><b id="result-difficulty"></b></div>
-        <div><span>코인 집계</span><b id="result-coins"></b></div>
       </div>
       <p id="result-detail" class="hint"></p>
-      <p id="result-reward-status" class="reward-result"></p>
       <button id="result-scoreboard" class="btn primary">스코어보드 보기</button>
     </div>
   </section>
-
-  <div id="payment-confirm-modal" class="payment-confirm-modal" hidden>
-    <div class="payment-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-confirm-title">
-      <p class="payment-confirm-eyebrow">NAPLACE COIN</p>
-      <h2 id="payment-confirm-title">결제하시겠습니까?</h2>
-      <dl class="payment-confirm-summary">
-        <div><dt>이름</dt><dd id="payment-confirm-name">—</dd></div>
-        <div><dt>현재 잔액</dt><dd id="payment-confirm-balance">—</dd></div>
-        <div class="payment-confirm-charge"><dt>결제 금액</dt><dd id="payment-confirm-amount">—</dd></div>
-      </dl>
-      <p id="payment-confirm-warning" class="payment-confirm-warning"></p>
-      <div class="button-row">
-        <button id="payment-confirm-cancel" class="btn">취소</button>
-        <button id="payment-confirm-approve" class="btn primary">확인하고 바로 결제</button>
-      </div>
-    </div>
-  </div>
 
 </div>
 <script type="module" src="js/main.js"></script>
